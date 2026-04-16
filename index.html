@@ -529,6 +529,9 @@ function App() {
   const [qcErr, setQcErr] = useState("");
   const [qcOk, setQcOk] = useState("");
   const [qcOpen, setQcOpen] = useState(false);
+  const [genEx, setGenEx] = useState(null);
+  const [genBusy, setGenBusy] = useState(false);
+  const [genErr, setGenErr] = useState("");
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -592,7 +595,7 @@ function App() {
     saveData(SRS_KEY, nd);
     setCount(n => n + 1);
     q >= 2 ? setStreak(n => n + 1) : setStreak(0);
-    setTimeout(() => { setRevealed(false); setAnim(false); }, 250);
+    setTimeout(() => { setRevealed(false); setAnim(false); setGenEx(null); setGenErr(""); }, 250);
   };
 
   const reveal = () => { if (!revealed && cur) { setRevealed(true); if (dir === "en-es") speak(cur.spanish); } };
@@ -715,6 +718,34 @@ function App() {
     await saveData(CUSTOM_KEY, uc);
     setQcOk("Card added: " + qcResult.spanish);
     setQcResult(null); setQcInput("");
+  };
+
+  const doGenerateExample = async () => {
+    if (!cur) return;
+    const apiKey = localStorage.getItem(API_KEY_KEY);
+    if (!apiKey) { setGenErr("No API key set. Go to Settings → API Key."); return; }
+    setGenBusy(true); setGenErr(""); setGenEx(null);
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: 'You write a short, natural Spanish example sentence using a given Spanish word. Return ONLY a JSON object: {"ex":"<Spanish sentence>","exEn":"<English translation>"}. Keep the sentence under 10 words. Use natural, conversational Spanish. No markdown, no explanation. Just the JSON object.' },
+            { role: "user", content: 'Write an example sentence using the Spanish word: "' + cur.spanish + '" (which means "' + cur.english + '").' },
+          ],
+          max_tokens: 256, temperature: 0.7,
+        }),
+      });
+      if (!res.ok) throw new Error("API error " + res.status);
+      const data = await res.json();
+      const raw = (data.choices || []).map(c => c.message?.content || "").join("");
+      const clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setGenEx(parsed);
+    } catch (e) { setGenErr(e.message || "Failed to generate example"); }
+    setGenBusy(false);
   };
 
   const doExport = () => {
@@ -918,6 +949,15 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
                   <div className="ex-es">{cur.ex} <button className="ex-spk" onClick={()=>speak(cur.ex)}>🔊</button></div>
                   <div className="ex-en">{cur.exEn}</div>
                 </div>}
+                {genEx && <div className="ex-wrap" onClick={e=>e.stopPropagation()}>
+                  <div className="ex-label">AI Example</div>
+                  <div className="ex-es">{genEx.ex} <button className="ex-spk" onClick={()=>speak(genEx.ex)}>🔊</button></div>
+                  <div className="ex-en">{genEx.exEn}</div>
+                </div>}
+                {genErr && <div className="ie" onClick={e=>e.stopPropagation()}>{genErr}</div>}
+                <button className="ib2" style={{marginTop:12}} onClick={e=>{e.stopPropagation();doGenerateExample()}} disabled={genBusy}>
+                  {genBusy?<span>Generating sentence<span className="ld"></span></span>:(genEx?"Generate Another":"Use in a Sentence")}
+                </button>
               </>}
             </div>
           </div>
