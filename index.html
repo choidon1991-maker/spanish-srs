@@ -388,9 +388,69 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// ─── AI EXTRACTION (disabled in offline build) ──────────────────────
+// ─── AI EXTRACTION ──────────────────────────────────────────────────
+const API_KEY_KEY = "habla-api-key";
+
 async function extractCards(text, alreadyFound) {
-  throw new Error("AI extraction is not available in this offline build. You can still study, prioritize, and manage cards. To enable AI extraction, this feature needs a backend proxy with an Anthropic API key.");
+  const apiKey = localStorage.getItem(API_KEY_KEY);
+  if (!apiKey) throw new Error("No API key set. Go to Settings → API Key and enter your Anthropic API key.");
+
+  const words = text.split(/\s+/);
+  const trimmed = words.length > 3000 ? words.slice(0, 3000).join(" ") + "\n\n[transcript truncated]" : text;
+
+  const skipList = alreadyFound && alreadyFound.length > 0
+    ? "\n\nIMPORTANT: You have ALREADY extracted these words. Do NOT include any of them again:\n" + alreadyFound.join(", ")
+    : "";
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4096,
+      system: `You extract Spanish vocabulary from text for a flashcard app. Return ONLY a valid JSON array. No markdown fences, no backticks, no explanation text before or after. Just the raw JSON array.
+
+Each object: {"spanish":"...","english":"...","type":"word"|"phrase"}
+
+Rules:
+- Extract ALL useful vocabulary words and phrases from the text — do not limit yourself
+- Include every distinct word and phrase a Spanish learner would benefit from
+- Mix of individual words AND useful multi-word phrases/expressions
+- For verbs give infinitive form
+- Keep phrases under 10 words
+- Skip only the most basic filler words (y, el, la, de, en, a, que, un, una, los, las) unless part of a useful phrase
+- type="word" for 1 word, type="phrase" for 2+ words
+
+CRITICAL: Your entire response must be valid JSON. Start with [ and end with ]. Nothing else.`,
+      messages: [{ role: "user", content: "Extract ALL vocabulary from this Spanish text:" + skipList + "\n\n" + trimmed }],
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    if (res.status === 401) throw new Error("Invalid API key. Check your key in Settings → API Key.");
+    throw new Error("API error " + res.status + ": " + errText.slice(0, 200));
+  }
+
+  const data = await res.json();
+  if (data.error) throw new Error("API: " + (data.error.message || JSON.stringify(data.error)));
+
+  const raw = (data.content || []).map(b => b.text || "").join("");
+  if (!raw.trim()) throw new Error("Empty response from API");
+
+  const clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  try {
+    return JSON.parse(clean);
+  } catch (parseErr) {
+    const match = clean.match(/\[[\s\S]*\]/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error("Could not parse response as JSON");
+  }
 }
 
 // ─── APP ────────────────────────────────────────────────────────────
@@ -433,6 +493,7 @@ function App() {
   const [syncCode, setSyncCode] = useState("");
   const [syncMsg, setSyncMsg] = useState("");
   const [excluded, setExcluded] = useState({});
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_KEY) || "");
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -1011,6 +1072,12 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
             On <b>Android</b>: Settings → System → Language → Text-to-Speech → install Google high-quality voices
           </div>
         </div>
+        <div className="sc"><div className="sh">API Key</div>
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>Enter your Anthropic API key to enable AI vocabulary extraction in Projects. Your key is stored locally on this device only.</div>
+          <input className="ip" style={{marginTop:0}} type="password" placeholder="sk-ant-..." value={apiKey} onChange={e=>{setApiKey(e.target.value);localStorage.setItem(API_KEY_KEY,e.target.value)}}/>
+          {apiKey && <div style={{fontSize:12,color:'var(--gn)',marginTop:8}}>Key saved ({apiKey.slice(0,10)}...)</div>}
+        </div>
+
         <div className="sc"><div className="sh">Data</div>
           <div style={{fontSize:13,color:'var(--t3)',marginBottom:12}}>{BASE_CARDS.length} built-in + {custom.length} imported = {ALL_RAW.length} total · {hiddenCount} hidden · {ALL.length} active.</div>
           {hiddenCount > 0 && <button style={{width:'100%',padding:14,borderRadius:12,background:'#14532d',border:'1px solid #166534',color:'var(--gn)',fontFamily:'inherit',fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}} onClick={()=>{if(confirm("Restore all "+hiddenCount+" hidden cards?"))unhideAll()}}>Restore {hiddenCount} Hidden Cards</button>}
