@@ -535,6 +535,7 @@ function App() {
   const [pasteList, setPasteList] = useState("");
   const [pasteBusy, setPasteBusy] = useState(false);
   const [pasteErr, setPasteErr] = useState("");
+  const [previewSource, setPreviewSource] = useState(null);
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -606,7 +607,7 @@ function App() {
   const doExtract = async (existingPreview) => {
     if (!txt.trim()) return;
     setBusy(true); setErr(""); setOk("");
-    if (!existingPreview) { setPreview(null); setExcluded({}); }
+    if (!existingPreview) { setPreview(null); setExcluded({}); setPreviewSource(null); }
     try {
       const alreadyFound = existingPreview ? existingPreview.map(c => c.spanish) : [];
       const cards = await extractCards(txt.trim(), alreadyFound);
@@ -629,12 +630,12 @@ function App() {
 
   const doImport = async () => {
     if (!preview) return;
-    const lb = activeProj || label.trim() || "Import " + new Date().toLocaleDateString();
+    const lb = previewSource || activeProj || label.trim() || "Import " + new Date().toLocaleDateString();
     const ts = Date.now();
     const fresh = preview.filter((c, i) => !c.isDupe && !excluded[i]);
     if (fresh.length === 0) {
       setOk("No cards selected to add.");
-      setPreview(null); setTxt(""); setExcluded({});
+      setPreview(null); setTxt(""); setExcluded({}); setPreviewSource(null);
       return;
     }
     const nc = fresh.map((c, i) => ({ id: "c" + ts + "_" + i, spanish: c.spanish, english: c.english, type: c.type || "word", source: lb }));
@@ -644,7 +645,7 @@ function App() {
     const dupes = preview.filter(c => c.isDupe).length;
     const skips = Object.keys(excluded).filter(i => !preview[i]?.isDupe).length;
     setOk("Added " + nc.length + " cards" + (dupes > 0 ? " · " + dupes + " duplicate" + (dupes > 1 ? "s" : "") : "") + (skips > 0 ? " · " + skips + " deselected" : ""));
-    setPreview(null); setTxt(""); setExcluded({});
+    setPreview(null); setTxt(""); setExcluded({}); setPreviewSource(null);
   };
 
   const delSrc = async (s) => {
@@ -725,7 +726,7 @@ function App() {
 
   const doPasteList = async () => {
     if (!pasteList.trim() || !activeProj) return;
-    setPasteBusy(true); setPasteErr(""); setPreview(null); setExcluded({});
+    setPasteBusy(true); setPasteErr(""); setPreview(null); setExcluded({}); setPreviewSource("Pasted Phrases");
     const lines = pasteList.split("\n").map(l => l.trim()).filter(l => l.length > 0);
     if (lines.length === 0) { setPasteBusy(false); return; }
 
@@ -1156,7 +1157,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
                       {c.isDupe ? <span className="pt" style={{background:'#7f1d1d33',color:'var(--rd)',border:'1px solid #7f1d1d'}}>exists</span> : <span className="pt">{c.type}</span>}
                     </div>
                   })}
-                  <button className="ib" onClick={doImport} disabled={selectedCount===0}>Add {selectedCount} Cards to Project</button>
+                  <button className="ib" onClick={doImport} disabled={selectedCount===0}>Add {selectedCount} Cards to {previewSource || "Project"}</button>
                 </>;
               })()}
               <button className="ib2" style={{background:'var(--amd)',borderColor:'var(--am)',color:'var(--am)'}} disabled={busy} onClick={()=>doExtract(preview)}>
