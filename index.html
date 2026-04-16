@@ -373,7 +373,8 @@ function gradeSRS(c, q) {
     else iv = Math.round(iv * ef * 1.3);
   }
   ef = Math.max(1.3, ef + (0.1 - (3 - q) * (0.08 + (3 - q) * 0.02)));
-  return { ...c, iv, rep, ef, next: Date.now() + iv * 60000, last: Date.now(), isNew: false };
+  const easyMastered = q === 3 ? true : (c.easyMastered || false);
+  return { ...c, iv, rep, ef, easyMastered, next: Date.now() + iv * 60000, last: Date.now(), isNew: false };
 }
 
 // ─── VOICE ──────────────────────────────────────────────────────────
@@ -580,7 +581,7 @@ function App() {
   const due = [...reviews, ...newCards];
   const cur = due[0] || null;
   const seen = filtered.filter(c => srs[c.id]?.last > 0).length;
-  const mastered = filtered.filter(c => (srs[c.id]?.rep || 0) >= 3).length;
+  const mastered = filtered.filter(c => ((srs[c.id]?.rep || 0) >= 3 || srs[c.id]?.easyMastered)).length;
   const totalNew = filtered.filter(c => !srs[c.id]?.last).length;
 
   const doGrade = (q) => {
@@ -748,7 +749,7 @@ function App() {
     if (libSource !== "All Sources" && c.source !== libSource) return false;
     if (libStatus === "priority" && !prio[c.id]) return false;
     if (libStatus === "new" && srs[c.id]?.last > 0) return false;
-    if (libStatus === "learning" && (!srs[c.id]?.last || (srs[c.id]?.rep || 0) >= 3)) return false;
+    if (libStatus === "learning" && (!srs[c.id]?.last || ((srs[c.id]?.rep || 0) >= 3 || srs[c.id]?.easyMastered))) return false;
     if (libStatus === "mastered" && (srs[c.id]?.rep || 0) < 3) return false;
     if (libSearch.trim()) {
       const q = libSearch.toLowerCase();
@@ -759,7 +760,7 @@ function App() {
 
   const getStatus = (id) => {
     if (!srs[id]?.last) return "new";
-    if ((srs[id]?.rep || 0) >= 3) return "mastered";
+    if ((srs[id]?.rep || 0) >= 3 || srs[id]?.easyMastered) return "mastered";
     return "learning";
   };
 
