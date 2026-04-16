@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"/>
+<meta name="theme-color" content="#0c0a09"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="habla"/>
+<title>habla — Spanish SRS</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230c0a09'/><text x='50%25' y='62%25' text-anchor='middle' font-family='Georgia,serif' font-size='120' font-weight='800' fill='%23f59e0b'>h</text></svg>"/>
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230c0a09'/><text x='50%25' y='62%25' text-anchor='middle' font-family='Georgia,serif' font-size='22' font-weight='800' fill='%23f59e0b'>h</text></svg>"/>
+<style>
+html,body{background:#0c0a09;color:#fafaf9;overscroll-behavior-y:contain;-webkit-tap-highlight-color:transparent}
+#boot{min-height:100vh;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-family:sans-serif;font-size:16px}
+</style>
+</head>
+<body>
+<div id="root"><div id="boot">Loading…</div></div>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ─── VOCABULARY DATA ────────────────────────────────────────────────
+const BASE_CARDS = [
+  { id:"ms1",spanish:"Yo",english:"I",type:"word",source:"Magic Sentences" },
+  { id:"ms2",spanish:"Ser",english:"To be",type:"word",source:"Magic Sentences" },
+  { id:"ms3",spanish:"Yo soy",english:"I am",type:"phrase",source:"Magic Sentences" },
+  { id:"ms4",spanish:"Soy americano",english:"I am American",type:"phrase",source:"Magic Sentences" },
+  { id:"ms5",spanish:"No soy americano",english:"I'm not American",type:"phrase",source:"Magic Sentences" },
+  { id:"ms6",spanish:"Tú",english:"You",type:"word",source:"Magic Sentences" },
+  { id:"ms7",spanish:"Eres",english:"You are",type:"word",source:"Magic Sentences" },
+  { id:"ms8",spanish:"Me gusta",english:"I like",type:"phrase",source:"Magic Sentences" },
+  { id:"ms9",spanish:"Me gusta la comida mexicana",english:"I like Mexican food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms10",spanish:"No me gusta la comida mexicana",english:"I don't like Mexican food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms11",spanish:"Tengo",english:"I have",type:"word",source:"Magic Sentences" },
+  { id:"ms12",spanish:"Tengo comida",english:"I have food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms13",spanish:"Tengo agua",english:"I have water",type:"phrase",source:"Magic Sentences" },
+  { id:"ms14",spanish:"No tengo agua",english:"I don't have water",type:"phrase",source:"Magic Sentences" },
+  { id:"ms15",spanish:"Tienes agua",english:"You have water",type:"phrase",source:"Magic Sentences" },
+  { id:"ms16",spanish:"¿Eres americano?",english:"Are you American?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms17",spanish:"¿Tienes agua?",english:"Do you have water?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms18",spanish:"¿Te gusta la comida mexicana?",english:"Do you like Mexican food?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms19",spanish:"Hablar",english:"To speak",type:"word",source:"Magic Sentences" },
+  { id:"ms20",spanish:"Hablo",english:"I speak",type:"word",source:"Magic Sentences" },
+  { id:"ms21",spanish:"Hablo español",english:"I speak Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms22",spanish:"Hablo un poco de español",english:"I speak a little Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms23",spanish:"¿Hablas español?",english:"Do you speak Spanish?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms24",spanish:"¡Hablas español muy bien!",english:"You speak Spanish very well!",type:"phrase",source:"Magic Sentences" },
+  { id:"ms25",spanish:"Aprender",english:"To learn",type:"word",source:"Magic Sentences" },
+  { id:"ms26",spanish:"Aprendo español",english:"I learn Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms27",spanish:"Estoy aprendiendo español",english:"I'm learning Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms28",spanish:"Me gusta aprender español",english:"I like learning Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms29",spanish:"No soy mexicano",english:"I'm not Mexican",type:"phrase",source:"Magic Sentences" },
+  { id:"ms30",spanish:"¿Eres mexicano?",english:"Are you Mexican?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms31",spanish:"Querer",english:"To want",type:"word",source:"Magic Sentences" },
+  { id:"ms32",spanish:"Quiero",english:"I want",type:"word",source:"Magic Sentences" },
+  { id:"ms33",spanish:"Quiero aprender español",english:"I want to learn Spanish",type:"phrase",source:"Magic Sentences" },
+  { id:"ms34",spanish:"Comer",english:"To eat",type:"word",source:"Magic Sentences" },
+  { id:"ms35",spanish:"Quiero comer comida mexicana",english:"I want to eat Mexican food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms36",spanish:"Beber",english:"To drink",type:"word",source:"Magic Sentences" },
+  { id:"ms37",spanish:"Quiero beber agua",english:"I want to drink water",type:"phrase",source:"Magic Sentences" },
+  { id:"ms38",spanish:"Comprar",english:"To buy",type:"word",source:"Magic Sentences" },
+  { id:"ms39",spanish:"Quiero comprar esto",english:"I want to buy this",type:"phrase",source:"Magic Sentences" },
+  { id:"ms40",spanish:"¿Qué es esto?",english:"What is this?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms41",spanish:"¿Cuánto cuesta?",english:"How much does it cost?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms42",spanish:"Uno",english:"One",type:"word",source:"Magic Sentences" },
+  { id:"ms43",spanish:"Dos",english:"Two",type:"word",source:"Magic Sentences" },
+  { id:"ms44",spanish:"Tres",english:"Three",type:"word",source:"Magic Sentences" },
+  { id:"ms45",spanish:"Cuesta un dólar",english:"It costs one dollar",type:"phrase",source:"Magic Sentences" },
+  { id:"ms46",spanish:"¡Gracias!",english:"Thank you!",type:"word",source:"Magic Sentences" },
+  { id:"ms47",spanish:"¿Dónde vives?",english:"Where do you live?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms48",spanish:"Vivo en Nueva York",english:"I live in New York",type:"phrase",source:"Magic Sentences" },
+  { id:"ms49",spanish:"¿De dónde eres?",english:"Where are you from?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms50",spanish:"Soy de Nueva York",english:"I'm from New York",type:"phrase",source:"Magic Sentences" },
+  { id:"ms51",spanish:"Quiero ir a México",english:"I want to go to Mexico",type:"phrase",source:"Magic Sentences" },
+  { id:"ms52",spanish:"Fui a México",english:"I went to Mexico",type:"phrase",source:"Magic Sentences" },
+  { id:"ms53",spanish:"He estado en México",english:"I have been to Mexico",type:"phrase",source:"Magic Sentences" },
+  { id:"ms54",spanish:"¿Has estado en México?",english:"Have you been to Mexico?",type:"phrase",source:"Magic Sentences" },
+  { id:"ms55",spanish:"He comido comida mexicana",english:"I have eaten Mexican food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms56",spanish:"Nunca he comido comida mexicana",english:"I have never eaten Mexican food",type:"phrase",source:"Magic Sentences" },
+  { id:"ms57",spanish:"Aprendí español en línea",english:"I learned Spanish online",type:"phrase",source:"Magic Sentences" },
+  { id:"ms58",spanish:"¿Dónde aprendiste español?",english:"Where did you learn Spanish?",type:"phrase",source:"Magic Sentences" },
+  { id:"ss1",spanish:"¡Hola!",english:"Hi! / Hello!",type:"word",source:"StreetSmart" },
+  { id:"ss2",spanish:"¡Adiós!",english:"Bye!",type:"word",source:"StreetSmart" },
+  { id:"ss3",spanish:"¿Cómo estás?",english:"How are you?",type:"phrase",source:"StreetSmart" },
+  { id:"ss4",spanish:"Hasta mañana",english:"See you tomorrow",type:"phrase",source:"StreetSmart" },
+  { id:"ss5",spanish:"Sí",english:"Yes",type:"word",source:"StreetSmart" },
+  { id:"ss6",spanish:"¿Cómo te llamas?",english:"What's your name?",type:"phrase",source:"StreetSmart" },
+  { id:"ss7",spanish:"Por favor",english:"Please",type:"word",source:"StreetSmart" },
+  { id:"ss8",spanish:"Gracias",english:"Thank you",type:"word",source:"StreetSmart" },
+  { id:"ss9",spanish:"De nada",english:"You're welcome",type:"phrase",source:"StreetSmart" },
+  { id:"ss10",spanish:"¡Muchas gracias!",english:"Thank you very much!",type:"phrase",source:"StreetSmart" },
+  { id:"ss11",spanish:"Él",english:"He",type:"word",source:"StreetSmart" },
+  { id:"ss12",spanish:"Ella",english:"She",type:"word",source:"StreetSmart" },
+  { id:"ss13",spanish:"Ella es guapa",english:"She is beautiful",type:"phrase",source:"StreetSmart" },
+  { id:"ss14",spanish:"Esto es un libro",english:"This is a book",type:"phrase",source:"StreetSmart" },
+  { id:"ss15",spanish:"También",english:"Also",type:"word",source:"StreetSmart" },
+  { id:"ss16",spanish:"¿Qué?",english:"What?",type:"word",source:"StreetSmart" },
+  { id:"ss17",spanish:"¿Quién?",english:"Who?",type:"word",source:"StreetSmart" },
+  { id:"ss18",spanish:"Nosotros",english:"We",type:"word",source:"StreetSmart" },
+  { id:"ss19",spanish:"Vivir",english:"To live",type:"word",source:"StreetSmart" },
+  { id:"ss20",spanish:"Ellos",english:"They",type:"word",source:"StreetSmart" },
+  { id:"ss21",spanish:"Muy",english:"Very",type:"word",source:"StreetSmart" },
+  { id:"ss22",spanish:"Bien",english:"Well",type:"word",source:"StreetSmart" },
+  { id:"ss23",spanish:"¡Muy bien!",english:"Very well!",type:"phrase",source:"StreetSmart" },
+  { id:"ss24",spanish:"Entender",english:"To understand",type:"word",source:"StreetSmart" },
+  { id:"ss25",spanish:"Decir",english:"To say",type:"word",source:"StreetSmart" },
+  { id:"ss26",spanish:"Por supuesto",english:"Of course",type:"phrase",source:"StreetSmart" },
+  { id:"ss27",spanish:"Nadie me entiende",english:"Nobody understands me",type:"phrase",source:"StreetSmart" },
+  { id:"ss28",spanish:"¿Qué dijiste?",english:"What did you say?",type:"phrase",source:"StreetSmart" },
+  { id:"ss29",spanish:"¿Cómo se dice...en español?",english:"How do you say...in Spanish?",type:"phrase",source:"StreetSmart" },
+  { id:"ss30",spanish:"Poder",english:"Can",type:"word",source:"StreetSmart" },
+  { id:"ss31",spanish:"¿Cómo puedo ayudarte?",english:"How can I help you?",type:"phrase",source:"StreetSmart" },
+  { id:"ss32",spanish:"Ir",english:"To go",type:"word",source:"StreetSmart" },
+  { id:"ss33",spanish:"Lo siento",english:"Sorry",type:"phrase",source:"StreetSmart" },
+  { id:"ss34",spanish:"No pasa nada",english:"No problem",type:"phrase",source:"StreetSmart" },
+  { id:"ex1",spanish:"¿Y tú?",english:"And you?",type:"phrase",source:"Expansion" },
+  { id:"ex2",spanish:"Quiero trabajar",english:"I want to work",type:"phrase",source:"Expansion" },
+  { id:"ex3",spanish:"¿Quieres trabajar?",english:"Do you want to work?",type:"phrase",source:"Expansion" },
+  { id:"ex4",spanish:"¿Dónde trabajas?",english:"Where do you work?",type:"phrase",source:"Expansion" },
+  { id:"ex5",spanish:"No trabajo aquí",english:"I don't work here",type:"phrase",source:"Expansion" },
+  { id:"ex6",spanish:"¿Por qué no?",english:"Why not?",type:"phrase",source:"Expansion" },
+  { id:"ex7",spanish:"Tengo que trabajar",english:"I have to work",type:"phrase",source:"Expansion" },
+  { id:"ex8",spanish:"Tengo que trabajar ahora",english:"I have to work now",type:"phrase",source:"Expansion" },
+  { id:"ex9",spanish:"No quiero trabajar hoy",english:"I don't want to work today",type:"phrase",source:"Expansion" },
+  { id:"ex10",spanish:"¿Dónde quieres comer?",english:"Where do you want to eat?",type:"phrase",source:"Expansion" },
+  { id:"ex11",spanish:"Todavía es temprano",english:"It is still early",type:"phrase",source:"Expansion" },
+  { id:"ex12",spanish:"Nunca he estado en España",english:"I have never been to Spain",type:"phrase",source:"Expansion" },
+  { id:"ex13",spanish:"¿Dónde estás?",english:"Where are you?",type:"phrase",source:"Expansion" },
+  { id:"ex14",spanish:"¡Buenos días!",english:"Good morning!",type:"phrase",source:"Expansion" },
+  { id:"ex15",spanish:"¡Buenas tardes!",english:"Good afternoon!",type:"phrase",source:"Expansion" },
+  { id:"ex16",spanish:"¡Buenas noches!",english:"Good evening!",type:"phrase",source:"Expansion" },
+  { id:"ex17",spanish:"¿Te gusta leer?",english:"Do you like to read?",type:"phrase",source:"Expansion" },
+  { id:"ex18",spanish:"Me gustaría comer algo",english:"I would like to eat something",type:"phrase",source:"Expansion" },
+  { id:"ex19",spanish:"¿Aún quieres ir?",english:"Do you still want to go?",type:"phrase",source:"Expansion" },
+  { id:"ex20",spanish:"Tengo hambre y estoy cansado",english:"I am hungry and I'm tired",type:"phrase",source:"Expansion" },
+  { id:"ex21",spanish:"¿Puedo llamarte más tarde?",english:"Can I call you later?",type:"phrase",source:"Expansion" },
+  { id:"ex22",spanish:"Hace mucho frío hoy",english:"It is very cold today",type:"phrase",source:"Expansion" },
+  { id:"ex23",spanish:"Hoy hace mucho calor",english:"It's very hot today",type:"phrase",source:"Expansion" },
+  { id:"ex24",spanish:"Es mi mejor amiga",english:"She's my best friend",type:"phrase",source:"Expansion" },
+  { id:"ex25",spanish:"¡Vamos!",english:"Let's go!",type:"phrase",source:"Expansion" },
+  { id:"ex26",spanish:"Una cerveza, por favor",english:"A beer please!",type:"phrase",source:"Expansion" },
+  { id:"ex27",spanish:"Todavía no lo he decidido",english:"I haven't decided yet",type:"phrase",source:"Expansion" },
+  { id:"ex28",spanish:"¿Qué pasó?",english:"What happened?",type:"phrase",source:"Expansion" },
+  { id:"ex29",spanish:"No puedo explicarlo en español",english:"I can't explain it in Spanish",type:"phrase",source:"Expansion" },
+  { id:"ex30",spanish:"Voy al gimnasio",english:"I am going to the gym",type:"phrase",source:"Expansion" },
+  { id:"ex31",spanish:"Quizá la próxima vez",english:"Maybe next time",type:"phrase",source:"Expansion" },
+  { id:"ex32",spanish:"Tengo un gran problema",english:"I have a big problem",type:"phrase",source:"Expansion" },
+  { id:"ex33",spanish:"¿Estás listo?",english:"Are you ready?",type:"phrase",source:"Expansion" },
+  { id:"ex34",spanish:"¿Quieres ir al cine esta noche?",english:"Do you want to go to the cinema tonight?",type:"phrase",source:"Expansion" },
+  { id:"ex35",spanish:"Normalmente me levanto temprano",english:"Usually, I get up early",type:"phrase",source:"Expansion" },
+  { id:"ex36",spanish:"¡Nos veremos pronto!",english:"We will meet soon!",type:"phrase",source:"Expansion" },
+  { id:"ex37",spanish:"Me encanta el verano",english:"I love summer",type:"phrase",source:"Expansion" },
+  { id:"ex38",spanish:"¿Puedes hablar más despacio, por favor?",english:"Can you speak more slowly please?",type:"phrase",source:"Expansion" },
+  { id:"ex39",spanish:"¡Te quiero mucho!",english:"I love you so much!",type:"phrase",source:"Expansion" },
+  { id:"ex40",spanish:"Necesito descansar, estoy muy cansado",english:"I have to rest, I am very tired",type:"phrase",source:"Expansion" },
+  { id:"ex41",spanish:"¿Podemos vernos mañana?",english:"Can we meet tomorrow?",type:"phrase",source:"Expansion" },
+  { id:"ex42",spanish:"Es un buen amigo",english:"He is a good friend",type:"phrase",source:"Expansion" },
+  { id:"ex43",spanish:"¿Tienes hambre?",english:"Are you hungry?",type:"phrase",source:"Expansion" },
+  { id:"ex44",spanish:"¿Dónde está el restaurante?",english:"Where is the restaurant?",type:"phrase",source:"Expansion" },
+  { id:"ex45",spanish:"Por favor, ¿puede ayudarme?",english:"Please, can you help me?",type:"phrase",source:"Expansion" },
+  { id:"aw1",spanish:"Tierra",english:"earth",type:"word",source:"Awesome Words" },
+  { id:"aw2",spanish:"cielo",english:"sky",type:"word",source:"Awesome Words" },
+  { id:"aw3",spanish:"luna",english:"moon",type:"word",source:"Awesome Words" },
+  { id:"aw4",spanish:"blanco",english:"white",type:"word",source:"Awesome Words" },
+  { id:"aw5",spanish:"estrella",english:"star",type:"word",source:"Awesome Words" },
+  { id:"aw6",spanish:"viernes",english:"Friday",type:"word",source:"Awesome Words" },
+  { id:"aw7",spanish:"camarero",english:"waiter",type:"word",source:"Awesome Words" },
+  { id:"aw8",spanish:"dolor",english:"pain",type:"word",source:"Awesome Words" },
+  { id:"aw9",spanish:"contar",english:"to count",type:"word",source:"Awesome Words" },
+  { id:"aw10",spanish:"joven",english:"young",type:"word",source:"Awesome Words" },
+  { id:"aw11",spanish:"perro",english:"dog",type:"word",source:"Awesome Words" },
+  { id:"aw12",spanish:"parque",english:"park",type:"word",source:"Awesome Words" },
+  { id:"aw13",spanish:"saltar",english:"to jump",type:"word",source:"Awesome Words" },
+  { id:"aw14",spanish:"hombro",english:"shoulder",type:"word",source:"Awesome Words" },
+  { id:"aw15",spanish:"izquierda",english:"left",type:"word",source:"Awesome Words" },
+  { id:"aw16",spanish:"levantar",english:"to lift",type:"word",source:"Awesome Words" },
+  { id:"aw17",spanish:"dormitorio",english:"bedroom",type:"word",source:"Awesome Words" },
+  { id:"aw18",spanish:"ventilador",english:"fan (appliance)",type:"word",source:"Awesome Words" },
+  { id:"aw19",spanish:"aire",english:"air",type:"word",source:"Awesome Words" },
+  { id:"aw20",spanish:"tiempo",english:"time",type:"word",source:"Awesome Words" },
+  { id:"aw21",spanish:"avión",english:"plane",type:"word",source:"Awesome Words" },
+  { id:"aw22",spanish:"boleto",english:"ticket",type:"word",source:"Awesome Words" },
+  { id:"aw23",spanish:"aeropuerto",english:"airport",type:"word",source:"Awesome Words" },
+  { id:"aw24",spanish:"detrás",english:"behind",type:"word",source:"Awesome Words" },
+  { id:"aw25",spanish:"invierno",english:"winter",type:"word",source:"Awesome Words" },
+  { id:"aw26",spanish:"andar",english:"to walk",type:"word",source:"Awesome Words" },
+  { id:"aw27",spanish:"frío",english:"cold",type:"word",source:"Awesome Words" },
+  { id:"aw28",spanish:"ciudad",english:"town",type:"word",source:"Awesome Words" },
+  { id:"aw29",spanish:"lluvia",english:"rain",type:"word",source:"Awesome Words" },
+  { id:"aw30",spanish:"regalo",english:"gift",type:"word",source:"Awesome Words" },
+  { id:"aw31",spanish:"dinero",english:"money",type:"word",source:"Awesome Words" },
+  { id:"aw32",spanish:"pagar",english:"to pay",type:"word",source:"Awesome Words" },
+  { id:"aw33",spanish:"caliente",english:"hot",type:"word",source:"Awesome Words" },
+  { id:"aw34",spanish:"verano",english:"summer",type:"word",source:"Awesome Words" },
+  { id:"aw35",spanish:"piscina",english:"pool",type:"word",source:"Awesome Words" },
+  { id:"aw36",spanish:"naturaleza",english:"nature",type:"word",source:"Awesome Words" },
+  { id:"aw37",spanish:"cantar",english:"to sing",type:"word",source:"Awesome Words" },
+  { id:"aw38",spanish:"amarillo",english:"yellow",type:"word",source:"Awesome Words" },
+  { id:"aw39",spanish:"pájaro",english:"bird",type:"word",source:"Awesome Words" },
+  { id:"aw40",spanish:"árbol",english:"tree",type:"word",source:"Awesome Words" },
+  { id:"aw41",spanish:"edificio",english:"building",type:"word",source:"Awesome Words" },
+  { id:"aw42",spanish:"rey",english:"king",type:"word",source:"Awesome Words" },
+  { id:"aw43",spanish:"amar",english:"to love",type:"word",source:"Awesome Words" },
+  { id:"aw44",spanish:"noche",english:"night",type:"word",source:"Awesome Words" },
+];
+
+// ─── EXAMPLE SENTENCES FOR WORDS ─────────────────────────────────────
+const EXAMPLES = {
+  ms1: { ex: "Yo tengo un gato.", exEn: "I have a cat." },
+  ms2: { ex: "Quiero ser doctor.", exEn: "I want to be a doctor." },
+  ms6: { ex: "Tú eres mi amigo.", exEn: "You are my friend." },
+  ms7: { ex: "Eres muy inteligente.", exEn: "You are very intelligent." },
+  ms11: { ex: "Tengo tres hermanos.", exEn: "I have three brothers." },
+  ms19: { ex: "Me gusta hablar español.", exEn: "I like to speak Spanish." },
+  ms20: { ex: "Hablo con mi madre.", exEn: "I speak with my mother." },
+  ms25: { ex: "Quiero aprender a cocinar.", exEn: "I want to learn to cook." },
+  ms31: { ex: "No quiero ir.", exEn: "I don't want to go." },
+  ms32: { ex: "Quiero un café.", exEn: "I want a coffee." },
+  ms34: { ex: "Vamos a comer juntos.", exEn: "Let's eat together." },
+  ms36: { ex: "¿Quieres beber algo?", exEn: "Do you want to drink something?" },
+  ms38: { ex: "Necesito comprar leche.", exEn: "I need to buy milk." },
+  ms42: { ex: "Solo tengo uno.", exEn: "I only have one." },
+  ms43: { ex: "Tengo dos hijos.", exEn: "I have two children." },
+  ms44: { ex: "Faltan tres días.", exEn: "Three days remain." },
+  ms46: { ex: "¡Muchas gracias por todo!", exEn: "Thank you very much for everything!" },
+  ss1: { ex: "¡Hola! ¿Qué tal?", exEn: "Hi! How's it going?" },
+  ss2: { ex: "¡Adiós, nos vemos!", exEn: "Bye, see you!" },
+  ss5: { ex: "Sí, claro que sí.", exEn: "Yes, of course." },
+  ss7: { ex: "Un agua, por favor.", exEn: "A water, please." },
+  ss8: { ex: "Gracias por tu ayuda.", exEn: "Thank you for your help." },
+  ss11: { ex: "Él trabaja mucho.", exEn: "He works a lot." },
+  ss12: { ex: "Ella vive en México.", exEn: "She lives in Mexico." },
+  ss15: { ex: "Yo también quiero ir.", exEn: "I also want to go." },
+  ss16: { ex: "¿Qué quieres hacer?", exEn: "What do you want to do?" },
+  ss17: { ex: "¿Quién es esa persona?", exEn: "Who is that person?" },
+  ss18: { ex: "Nosotros somos amigos.", exEn: "We are friends." },
+  ss19: { ex: "Me gusta vivir aquí.", exEn: "I like to live here." },
+  ss20: { ex: "Ellos llegan mañana.", exEn: "They arrive tomorrow." },
+  ss21: { ex: "Es muy bonito.", exEn: "It's very pretty." },
+  ss22: { ex: "Estoy bien, gracias.", exEn: "I'm well, thank you." },
+  ss24: { ex: "No puedo entender esto.", exEn: "I can't understand this." },
+  ss25: { ex: "¿Qué quieres decir?", exEn: "What do you mean?" },
+  ss30: { ex: "¿Puedes ayudarme?", exEn: "Can you help me?" },
+  ss32: { ex: "Quiero ir al parque.", exEn: "I want to go to the park." },
+  aw1: { ex: "La tierra es redonda.", exEn: "The earth is round." },
+  aw2: { ex: "El cielo está azul hoy.", exEn: "The sky is blue today." },
+  aw3: { ex: "La luna llena es hermosa.", exEn: "The full moon is beautiful." },
+  aw4: { ex: "Mi coche es blanco.", exEn: "My car is white." },
+  aw5: { ex: "Puedo ver una estrella.", exEn: "I can see a star." },
+  aw6: { ex: "El viernes vamos a la playa.", exEn: "On Friday we're going to the beach." },
+  aw7: { ex: "El camarero es muy amable.", exEn: "The waiter is very kind." },
+  aw8: { ex: "Tengo un dolor de cabeza.", exEn: "I have a headache." },
+  aw9: { ex: "Vamos a contar hasta diez.", exEn: "Let's count to ten." },
+  aw10: { ex: "Es una persona muy joven.", exEn: "He/she is a very young person." },
+  aw11: { ex: "Mi perro se llama Max.", exEn: "My dog's name is Max." },
+  aw12: { ex: "Los niños juegan en el parque.", exEn: "The children play in the park." },
+  aw13: { ex: "El gato puede saltar muy alto.", exEn: "The cat can jump very high." },
+  aw14: { ex: "Me duele el hombro derecho.", exEn: "My right shoulder hurts." },
+  aw15: { ex: "Gira a la izquierda.", exEn: "Turn left." },
+  aw16: { ex: "No puedo levantar esto.", exEn: "I can't lift this." },
+  aw17: { ex: "El dormitorio es grande.", exEn: "The bedroom is big." },
+  aw18: { ex: "Enciende el ventilador.", exEn: "Turn on the fan." },
+  aw19: { ex: "Necesito aire fresco.", exEn: "I need fresh air." },
+  aw20: { ex: "No tengo tiempo hoy.", exEn: "I don't have time today." },
+  aw21: { ex: "El avión sale a las ocho.", exEn: "The plane leaves at eight." },
+  aw22: { ex: "¿Dónde compro el boleto?", exEn: "Where do I buy the ticket?" },
+  aw23: { ex: "El aeropuerto está lejos.", exEn: "The airport is far away." },
+  aw24: { ex: "Está detrás de la casa.", exEn: "It's behind the house." },
+  aw25: { ex: "El invierno es muy frío aquí.", exEn: "Winter is very cold here." },
+  aw26: { ex: "Me gusta andar por la ciudad.", exEn: "I like to walk through the city." },
+  aw27: { ex: "Hace mucho frío afuera.", exEn: "It's very cold outside." },
+  aw28: { ex: "Es una ciudad muy grande.", exEn: "It's a very big city." },
+  aw29: { ex: "La lluvia no para.", exEn: "The rain won't stop." },
+  aw30: { ex: "Tengo un regalo para ti.", exEn: "I have a gift for you." },
+  aw31: { ex: "Voy al trabajo en bicicleta.", exEn: "I go to work by bike." },
+  aw32: { ex: "No tengo suficiente dinero.", exEn: "I don't have enough money." },
+  aw33: { ex: "Tengo que pagar la cuenta.", exEn: "I have to pay the bill." },
+  aw34: { ex: "El café está muy caliente.", exEn: "The coffee is very hot." },
+  aw35: { ex: "En verano vamos a la playa.", exEn: "In summer we go to the beach." },
+  aw36: { ex: "La piscina está cerrada.", exEn: "The pool is closed." },
+  aw37: { ex: "Me encanta la naturaleza.", exEn: "I love nature." },
+  aw38: { ex: "A ella le gusta cantar.", exEn: "She likes to sing." },
+  aw39: { ex: "Las flores son amarillas.", exEn: "The flowers are yellow." },
+  aw40: { ex: "Hay un pájaro en el árbol.", exEn: "There is a bird in the tree." },
+  aw41: { ex: "El árbol es muy alto.", exEn: "The tree is very tall." },
+  aw42: { ex: "La mesa es de madera.", exEn: "The table is made of wood." },
+  aw43: { ex: "Es un edificio muy moderno.", exEn: "It's a very modern building." },
+  aw44: { ex: "El rey vive en un castillo.", exEn: "The king lives in a castle." },
+  aw45: { ex: "Hay que amar la vida.", exEn: "One must love life." },
+  aw46: { ex: "La noche está tranquila.", exEn: "The night is calm." },
+  // Phrases with examples
+  ms3: { ex: "Yo soy de Chicago.", exEn: "I am from Chicago." },
+  ms8: { ex: "Me gusta mucho la música.", exEn: "I really like music." },
+  ss3: { ex: "Hola, ¿cómo estás hoy?", exEn: "Hi, how are you today?" },
+  ss9: { ex: "De nada, fue un placer.", exEn: "You're welcome, it was a pleasure." },
+  ss26: { ex: "¿Vienes? Por supuesto que sí.", exEn: "Are you coming? Of course!" },
+  ss33: { ex: "Lo siento, no sabía.", exEn: "Sorry, I didn't know." },
+  ss34: { ex: "No pasa nada, está bien.", exEn: "No problem, it's fine." },
+  ex1: { ex: "Yo estoy bien, ¿y tú?", exEn: "I'm fine, and you?" },
+  ex6: { ex: "¿Por qué no vienes? ¡Es divertido!", exEn: "Why not come? It's fun!" },
+  ex25: { ex: "¡Vamos al cine!", exEn: "Let's go to the movies!" },
+  ex28: { ex: "¿Qué pasó en la reunión?", exEn: "What happened at the meeting?" },
+  ex31: { ex: "Quizá la próxima vez puedas venir.", exEn: "Maybe next time you can come." },
+};
+
+const BASE_WITH_EX = BASE_CARDS.map(c => EXAMPLES[c.id] ? { ...c, ...EXAMPLES[c.id] } : c);
+const SRS_KEY = "habla-srs-data";
+const CUSTOM_KEY = "habla-custom-cards";
+const PRIO_KEY = "habla-priority-cards";
+const HIDDEN_KEY = "habla-hidden-cards";
+
+async function loadData(key) {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : null;
+  } catch { return null; }
+}
+async function saveData(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+// ─── SRS ENGINE ─────────────────────────────────────────────────────
+const HOUR = 60;
+const DAY = 60 * 24;
+const NEW_CARDS_PER_SESSION = 10;
+
+const mkSRS = (id) => ({ id, iv: 0, rep: 0, ef: 2.5, next: 0, last: 0, isNew: true });
+
+function gradeSRS(c, q) {
+  let { iv, rep, ef } = c;
+  if (q === 0) { rep = 0; iv = 1; }
+  else if (q === 1) {
+    if (rep === 0) iv = 10;
+    else iv = Math.round(iv * 1.2);
+  } else if (q === 2) {
+    rep++;
+    if (rep === 1) iv = 4 * HOUR;
+    else if (rep === 2) iv = 1 * DAY;
+    else iv = Math.round(iv * ef);
+  } else {
+    rep++;
+    if (rep === 1) iv = 1 * DAY;
+    else if (rep === 2) iv = 4 * DAY;
+    else iv = Math.round(iv * ef * 1.3);
+  }
+  ef = Math.max(1.3, ef + (0.1 - (3 - q) * (0.08 + (3 - q) * 0.02)));
+  return { ...c, iv, rep, ef, next: Date.now() + iv * 60000, last: Date.now(), isNew: false };
+}
+
+// ─── VOICE ──────────────────────────────────────────────────────────
+let cachedVoice = null;
+
+function getBestSpanishVoice() {
+  if (cachedVoice) return cachedVoice;
+  const voices = window.speechSynthesis?.getVoices() || [];
+  const spanish = voices.filter(v => v.lang.startsWith("es"));
+  if (!spanish.length) return null;
+  const score = (v) => {
+    let s = 0;
+    const name = v.name.toLowerCase();
+    if (name.includes("premium") || name.includes("enhanced") || name.includes("neural")) s += 100;
+    if (name.includes("natural")) s += 80;
+    if (v.lang === "es-MX") s += 40;
+    if (v.lang === "es-419") s += 30;
+    if (v.lang === "es-US") s += 25;
+    if (name.includes("google")) s += 20;
+    if (name.includes("paulina") || name.includes("mónica") || name.includes("monica")) s += 15;
+    if (!v.localService) s += 10;
+    return s;
+  };
+  spanish.sort((a, b) => score(b) - score(a));
+  cachedVoice = spanish[0];
+  return cachedVoice;
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voice = getBestSpanishVoice();
+  if (voice) { u.voice = voice; u.lang = voice.lang; } else { u.lang = "es-MX"; }
+  u.rate = 0.92; u.pitch = 1.0; u.volume = 1.0;
+  window.speechSynthesis.speak(u);
+}
+
+// ─── AI EXTRACTION (disabled in offline build) ──────────────────────
+async function extractCards(text, alreadyFound) {
+  throw new Error("AI extraction is not available in this offline build. You can still study, prioritize, and manage cards. To enable AI extraction, this feature needs a backend proxy with an Anthropic API key.");
+}
+
+// ─── APP ────────────────────────────────────────────────────────────
+const FILTERS = ["all", "word", "phrase"];
+
+function App() {
+  const [srs, setSrs] = useState({});
+  const [custom, setCustom] = useState([]);
+  const [prio, setPrio] = useState({});
+  const [hidden, setHidden] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("all");
+  const [source, setSource] = useState("All Sources");
+  const [revealed, setRevealed] = useState(false);
+  const [dir, setDir] = useState("es-en");
+  const [tab, setTab] = useState("study");
+  const [count, setCount] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [anim, setAnim] = useState(false);
+  const [sx, setSx] = useState(0);
+  const tr = useRef(null);
+
+  const [txt, setTxt] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [preview, setPreview] = useState(null);
+  const [ok, setOk] = useState("");
+
+  const [libSearch, setLibSearch] = useState("");
+  const [libFilter, setLibFilter] = useState("all");
+  const [libSource, setLibSource] = useState("All Sources");
+  const [libStatus, setLibStatus] = useState("all");
+
+  const [projView, setProjView] = useState("list");
+  const [activeProj, setActiveProj] = useState(null);
+  const [newProjName, setNewProjName] = useState("");
+
+  const [syncMode, setSyncMode] = useState(null);
+  const [syncCode, setSyncCode] = useState("");
+  const [syncMsg, setSyncMsg] = useState("");
+  const [excluded, setExcluded] = useState({});
+
+  const ALL_RAW = [...BASE_WITH_EX, ...custom];
+  const ALL = ALL_RAW.filter(c => !hidden[c.id]);
+  const csrc = [...new Set(custom.map(c => c.source))];
+  const SOURCES_LIST = ["All Sources", "Magic Sentences", "StreetSmart", "Expansion", "Awesome Words", ...csrc];
+
+  useEffect(() => {
+    (async () => {
+      const [s, c, p, h] = await Promise.all([loadData(SRS_KEY), loadData(CUSTOM_KEY), loadData(PRIO_KEY), loadData(HIDDEN_KEY)]);
+      if (s) setSrs(s);
+      if (c) setCustom(c);
+      if (p) setPrio(p);
+      if (h) setHidden(h);
+      setLoading(false);
+    })();
+    if (window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => { cachedVoice = null; window.speechSynthesis.getVoices(); };
+    }
+  }, []);
+
+  const filtered = ALL.filter(c => (filter === "all" || c.type === filter) && (source === "All Sources" || c.source === source));
+
+  const now = Date.now();
+  const reviews = filtered
+    .filter(c => srs[c.id]?.last > 0 && srs[c.id].next <= now)
+    .map(c => ({ ...c, s: srs[c.id] }))
+    .sort((a, b) => a.s.next - b.s.next);
+
+  const newCards = filtered
+    .filter(c => !srs[c.id]?.last)
+    .map(c => ({ ...c, s: mkSRS(c.id) }))
+    .sort((a, b) => (prio[b.id] ? 1 : 0) - (prio[a.id] ? 1 : 0))
+    .slice(0, NEW_CARDS_PER_SESSION);
+
+  const due = [...reviews, ...newCards];
+  const cur = due[0] || null;
+  const seen = filtered.filter(c => srs[c.id]?.last > 0).length;
+  const mastered = filtered.filter(c => (srs[c.id]?.rep || 0) >= 3).length;
+  const totalNew = filtered.filter(c => !srs[c.id]?.last).length;
+
+  const doGrade = (q) => {
+    if (!cur || anim) return;
+    setAnim(true);
+    const u = gradeSRS(cur.s, q);
+    const nd = { ...srs, [cur.id]: u };
+    setSrs(nd);
+    saveData(SRS_KEY, nd);
+    setCount(n => n + 1);
+    q >= 2 ? setStreak(n => n + 1) : setStreak(0);
+    setTimeout(() => { setRevealed(false); setAnim(false); }, 250);
+  };
+
+  const reveal = () => { if (!revealed && cur) { setRevealed(true); if (dir === "en-es") speak(cur.spanish); } };
+
+  const doExtract = async (existingPreview) => {
+    if (!txt.trim()) return;
+    setBusy(true); setErr(""); setOk("");
+    if (!existingPreview) { setPreview(null); setExcluded({}); }
+    try {
+      const alreadyFound = existingPreview ? existingPreview.map(c => c.spanish) : [];
+      const cards = await extractCards(txt.trim(), alreadyFound);
+      if (!Array.isArray(cards) || !cards.length) {
+        if (existingPreview) setErr("No additional vocabulary found — looks like we got everything!");
+        else throw new Error("No vocabulary cards were extracted. Try a longer transcript.");
+        setBusy(false);
+        return;
+      }
+      const existing = new Set(ALL_RAW.map(c => c.spanish.toLowerCase().trim()));
+      const previewSet = new Set((existingPreview || []).map(c => c.spanish.toLowerCase().trim()));
+      const tagged = cards
+        .filter(c => !previewSet.has(c.spanish.toLowerCase().trim()))
+        .map(c => ({ ...c, isDupe: existing.has(c.spanish.toLowerCase().trim()) }));
+      if (tagged.length === 0 && existingPreview) setErr("No additional vocabulary found — looks like we got everything!");
+      else setPreview([...(existingPreview || []), ...tagged]);
+    } catch (e) { setErr(e.message || "Failed to extract vocabulary. Try again."); }
+    setBusy(false);
+  };
+
+  const doImport = async () => {
+    if (!preview) return;
+    const lb = activeProj || label.trim() || "Import " + new Date().toLocaleDateString();
+    const ts = Date.now();
+    const fresh = preview.filter((c, i) => !c.isDupe && !excluded[i]);
+    if (fresh.length === 0) {
+      setOk("No cards selected to add.");
+      setPreview(null); setTxt(""); setExcluded({});
+      return;
+    }
+    const nc = fresh.map((c, i) => ({ id: "c" + ts + "_" + i, spanish: c.spanish, english: c.english, type: c.type || "word", source: lb }));
+    const uc = [...custom, ...nc];
+    setCustom(uc);
+    await saveData(CUSTOM_KEY, uc);
+    const dupes = preview.filter(c => c.isDupe).length;
+    const skips = Object.keys(excluded).filter(i => !preview[i]?.isDupe).length;
+    setOk("Added " + nc.length + " cards" + (dupes > 0 ? " · " + dupes + " duplicate" + (dupes > 1 ? "s" : "") : "") + (skips > 0 ? " · " + skips + " deselected" : ""));
+    setPreview(null); setTxt(""); setExcluded({});
+  };
+
+  const delSrc = async (s) => {
+    if (!confirm('Delete all "' + s + '" cards?')) return;
+    const ids = custom.filter(c => c.source === s).map(c => c.id);
+    const uc = custom.filter(c => c.source !== s);
+    setCustom(uc); await saveData(CUSTOM_KEY, uc);
+    const ns = { ...srs }; ids.forEach(id => delete ns[id]);
+    setSrs(ns); await saveData(SRS_KEY, ns);
+    if (source === s) setSource("All Sources");
+  };
+
+  const resetAll = async () => {
+    setSrs({}); await saveData(SRS_KEY, {});
+    setCount(0); setStreak(0); setRevealed(false);
+  };
+
+  const togglePrio = async (id) => {
+    const np = { ...prio };
+    if (np[id]) delete np[id]; else np[id] = true;
+    setPrio(np);
+    await saveData(PRIO_KEY, np);
+  };
+
+  const hideCard = async (id) => {
+    const nh = { ...hidden, [id]: true };
+    setHidden(nh);
+    await saveData(HIDDEN_KEY, nh);
+    if (prio[id]) {
+      const np = { ...prio }; delete np[id];
+      setPrio(np); await saveData(PRIO_KEY, np);
+    }
+  };
+
+  const unhideAll = async () => {
+    setHidden({});
+    await saveData(HIDDEN_KEY, {});
+  };
+
+  const doExport = () => {
+    const data = { srs, custom, prio, hidden, v: 1 };
+    const json = JSON.stringify(data);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    setSyncCode(b64);
+    setSyncMode("export");
+    setSyncMsg("");
+  };
+
+  const doImportSync = async () => {
+    try {
+      const json = decodeURIComponent(escape(atob(syncCode.trim())));
+      const data = JSON.parse(json);
+      if (!data.v) throw new Error("Invalid format");
+      if (data.srs) { setSrs(data.srs); await saveData(SRS_KEY, data.srs); }
+      if (data.custom) { setCustom(data.custom); await saveData(CUSTOM_KEY, data.custom); }
+      if (data.prio) { setPrio(data.prio); await saveData(PRIO_KEY, data.prio); }
+      if (data.hidden) { setHidden(data.hidden); await saveData(HIDDEN_KEY, data.hidden); }
+      setSyncMsg("Imported! " + (data.custom?.length || 0) + " custom cards, " + Object.keys(data.srs || {}).length + " progress records.");
+      setSyncCode("");
+    } catch (e) {
+      setSyncMsg("Invalid code. Make sure you copied the full export code.");
+    }
+  };
+
+  const libBase = libStatus === "hidden" ? ALL_RAW.filter(c => hidden[c.id]) : ALL;
+  const libCards = libBase.filter(c => {
+    if (libFilter !== "all" && c.type !== libFilter) return false;
+    if (libSource !== "All Sources" && c.source !== libSource) return false;
+    if (libStatus === "priority" && !prio[c.id]) return false;
+    if (libStatus === "new" && srs[c.id]?.last > 0) return false;
+    if (libStatus === "learning" && (!srs[c.id]?.last || (srs[c.id]?.rep || 0) >= 3)) return false;
+    if (libStatus === "mastered" && (srs[c.id]?.rep || 0) < 3) return false;
+    if (libSearch.trim()) {
+      const q = libSearch.toLowerCase();
+      if (!c.spanish.toLowerCase().includes(q) && !c.english.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const getStatus = (id) => {
+    if (!srs[id]?.last) return "new";
+    if ((srs[id]?.rep || 0) >= 3) return "mastered";
+    return "learning";
+  };
+
+  const prioCount = Object.keys(prio).length;
+  const hiddenCount = Object.keys(hidden).length;
+
+  if (loading) return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0c0a09',color:'#f59e0b',fontFamily:'sans-serif',fontSize:18}}>
+      Loading your cards...
+    </div>
+  );
+
+  const fmtIv = (mins) => {
+    if (mins < 60) return mins + "m";
+    if (mins < DAY) return Math.round(mins / 60) + "h";
+    return Math.round(mins / DAY) + "d";
+  };
+
+  const qtext = dir === "es-en" ? cur?.spanish : cur?.english;
+  const atext = dir === "es-en" ? cur?.english : cur?.spanish;
+
+  return (<>
+    <style>{`
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0c0a09;--s1:#1c1917;--s2:#292524;--s3:#44403c;--am:#f59e0b;--amd:#92400e;--gn:#22c55e;--rd:#ef4444;--bl:#3b82f6;--t:#fafaf9;--t2:#a8a29e;--t3:#78716c;--r:16px}
+body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
+.A{max-width:440px;margin:0 auto;min-height:100vh;padding:16px;padding-bottom:100px}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:8px 0 20px}
+.logo{font-family:'Fraunces',serif;font-size:22px;font-weight:800;background:linear-gradient(135deg,var(--am),var(--rd));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.sk{display:flex;align-items:center;gap:6px;background:var(--s1);border:1px solid var(--s3);padding:6px 14px;border-radius:100px;font-size:14px;font-weight:500;color:var(--am)}
+.sb{display:flex;gap:8px;margin-bottom:20px}
+.sp{flex:1;background:var(--s1);border:1px solid var(--s2);border-radius:12px;padding:10px 12px;text-align:center}
+.sn{font-family:'Fraunces',serif;font-size:22px;font-weight:800}
+.sl{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.fl{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.fb{background:var(--s1);border:1px solid var(--s2);color:var(--t2);padding:6px 14px;border-radius:100px;font-size:13px;font-family:inherit;cursor:pointer;transition:.2s}
+.fb.on{background:var(--am);border-color:var(--am);color:var(--bg);font-weight:700}
+.ss{width:100%;background:var(--s1);border:1px solid var(--s2);color:var(--t2);padding:8px 14px;border-radius:12px;font-size:13px;font-family:inherit;margin-bottom:20px;appearance:none;cursor:pointer}
+.cc{perspective:1000px;margin-bottom:20px;user-select:none;-webkit-user-select:none}
+.cd{min-height:280px;border-radius:var(--r);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;position:relative;transition:.3s;cursor:pointer}
+.cf{background:linear-gradient(145deg,#292524,#1c1917);border:1px solid var(--s3);box-shadow:0 8px 32px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.05)}
+.cb{background:linear-gradient(145deg,#1a1207,#1c1917);border:1px solid var(--amd);box-shadow:0 8px 32px rgba(245,158,11,.1)}
+.ct{position:absolute;top:14px;left:16px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);background:var(--s1);padding:3px 10px;border-radius:100px}
+.cs{position:absolute;top:14px;right:16px;font-size:10px;color:var(--t3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--t3);margin-bottom:16px}
+.cx{font-family:'Fraunces',serif;font-size:28px;font-weight:600;text-align:center;line-height:1.3;word-break:break-word}
+.cx.sm{font-size:20px}
+.al{font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--am);margin-bottom:12px}
+.av{font-size:22px;font-weight:500;text-align:center;color:var(--am);margin-bottom:16px}
+.th{position:absolute;bottom:16px;font-size:12px;color:var(--t3)}
+.spk{width:48px;height:48px;border-radius:50%;background:var(--s2);border:1px solid var(--s3);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:12px;font-size:22px}
+.spk:active{transform:scale(.9);background:var(--amd)}
+.ex-wrap{margin-top:16px;padding:12px 16px;background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:12px;width:100%;text-align:left}
+.ex-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:6px}
+.ex-es{font-size:15px;font-weight:600;color:var(--t);line-height:1.4;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ex-en{font-size:13px;color:var(--t2);line-height:1.4;font-style:italic}
+.ex-spk{background:none;border:none;font-size:16px;cursor:pointer;padding:2px;flex-shrink:0}
+.gr{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:16px}
+.gb{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;border-radius:14px;border:1px solid var(--s3);background:var(--s1);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.gb:active{transform:scale(.95)}
+.g0{border-color:#7f1d1d;color:var(--rd)}.g1{border-color:#78350f;color:#fbbf24}.g2{border-color:#14532d;color:var(--gn)}.g3{border-color:#1e3a5f;color:var(--bl)}
+.gt{font-size:10px;font-weight:400;color:var(--t3)}
+.dn{min-height:260px;border-radius:var(--r);background:linear-gradient(145deg,#1a2e1a,#1c1917);border:1px solid #14532d;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center}
+.de{font-size:48px;margin-bottom:16px}.dt{font-family:'Fraunces',serif;font-size:24px;font-weight:800;color:var(--gn);margin-bottom:8px}.ds{font-size:14px;color:var(--t2);line-height:1.5}
+.bn{position:fixed;bottom:0;left:0;right:0;display:flex;justify-content:center;background:var(--s1);border-top:1px solid var(--s2);padding:8px 0;padding-bottom:max(8px,env(safe-area-inset-bottom));z-index:100}
+.nb{flex:1;max-width:80px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 4px;background:none;border:none;color:var(--t3);font-family:inherit;font-size:9px;cursor:pointer}
+.nb.on{color:var(--am)}.nb svg{width:20px;height:20px}
+.sc{background:var(--s1);border:1px solid var(--s2);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.sh{font-family:'Fraunces',serif;font-size:18px;font-weight:800;margin-bottom:16px}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--s2)}.sr:last-child{border-bottom:none}
+.tg{position:relative;width:48px;height:28px;background:var(--s3);border-radius:100px;cursor:pointer;border:none}.tg.on{background:var(--am)}
+.tg::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s}.tg.on::after{transform:translateX(20px)}
+.rb{width:100%;padding:14px;border-radius:12px;background:#7f1d1d;border:1px solid #991b1b;color:var(--rd);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.sk2{background:var(--s1);border:1px solid var(--s2);border-radius:var(--r);padding:20px;text-align:center}.sk2 .sn{font-size:32px;margin-bottom:4px}
+.pb{width:100%;height:10px;background:var(--s2);border-radius:100px;overflow:hidden;margin-top:8px}
+.pf{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--am),var(--rd));transition:.5s}
+.ta{width:100%;min-height:160px;background:var(--bg);border:1px solid var(--s3);border-radius:12px;color:var(--t);font-family:inherit;font-size:14px;padding:14px;resize:vertical;line-height:1.6;outline:none}
+.ta:focus{border-color:var(--am)}.ta::placeholder{color:var(--t3)}
+.ip{width:100%;background:var(--bg);border:1px solid var(--s3);border-radius:12px;color:var(--t);font-family:inherit;font-size:14px;padding:12px 14px;outline:none;margin-top:12px}
+.ip:focus{border-color:var(--am)}.ip::placeholder{color:var(--t3)}
+.ib{width:100%;padding:16px;border-radius:14px;border:none;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;margin-top:16px;background:linear-gradient(135deg,var(--am),var(--rd));color:var(--bg)}
+.ib:disabled{opacity:.4;cursor:not-allowed}.ib:active:not(:disabled){transform:scale(.98)}
+.ib2{width:100%;padding:14px;border-radius:14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;background:var(--s2);color:var(--t);border:1px solid var(--s3)}
+.pc{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--s2)}.pc:last-child{border-bottom:none}
+.pe{font-weight:700;font-size:14px;flex:1}.pn{color:var(--t2);font-size:13px;flex:1;text-align:right}
+.pt{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);background:var(--s2);padding:2px 8px;border-radius:100px;flex-shrink:0}
+.ps{background:none;border:none;font-size:18px;cursor:pointer;padding:4px;flex-shrink:0}
+.ie{background:#7f1d1d33;border:1px solid #7f1d1d;border-radius:12px;padding:14px;color:var(--rd);font-size:13px;margin-top:12px}
+.io{background:#14532d33;border:1px solid #14532d;border-radius:12px;padding:14px;color:var(--gn);font-size:13px;margin-top:12px}
+.cr{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--s2)}.cr:last-child{border-bottom:none}
+.db{background:none;border:1px solid #7f1d1d;color:var(--rd);font-family:inherit;font-size:11px;padding:4px 12px;border-radius:100px;cursor:pointer}
+.ld::after{content:'';animation:dd 1.5s steps(4,end) infinite}
+@keyframes dd{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@keyframes si{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.ai{animation:si .3s ease forwards}
+.lib-search{width:100%;background:var(--bg);border:1px solid var(--s3);border-radius:12px;color:var(--t);font-family:inherit;font-size:14px;padding:10px 14px 10px 36px;outline:none;margin-bottom:12px}
+.lib-search:focus{border-color:var(--am)}.lib-search::placeholder{color:var(--t3)}
+.lib-search-wrap{position:relative;margin-bottom:0}.lib-search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--t3);pointer-events:none}
+.lib-filters{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;flex-wrap:nowrap}
+.lib-filters::-webkit-scrollbar{display:none}
+.lf{background:var(--s1);border:1px solid var(--s2);color:var(--t2);padding:5px 12px;border-radius:100px;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.lf.on{background:var(--am);border-color:var(--am);color:var(--bg);font-weight:700}
+.lib-row{display:flex;align-items:center;gap:10px;padding:12px;background:var(--s1);border:1px solid var(--s2);border-radius:12px;margin-bottom:8px}
+.lib-star{background:none;border:none;font-size:20px;cursor:pointer;padding:2px;flex-shrink:0;transition:.15s}
+.lib-star:active{transform:scale(1.3)}
+.lib-info{flex:1;min-width:0}
+.lib-es{font-weight:700;font-size:14px;color:var(--t);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-en{font-size:12px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.lib-badge{font-size:9px;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:100px;font-weight:700}
+.lib-badge.new{background:#1e3a5f33;color:var(--bl);border:1px solid #1e3a5f}
+.lib-badge.learning{background:#78350f33;color:#fbbf24;border:1px solid #78350f}
+.lib-badge.mastered{background:#14532d33;color:var(--gn);border:1px solid #14532d}
+.lib-count{font-size:12px;color:var(--t3);text-align:center;padding:8px 0}
+.proj-card{background:var(--s1);border:1px solid var(--s2);border-radius:var(--r);padding:16px;margin-bottom:10px;cursor:pointer;transition:.2s}
+.proj-card:active{border-color:var(--am);transform:scale(.99)}
+.proj-back{background:none;border:none;color:var(--am);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;padding:0;margin-bottom:12px;display:block}
+.lib-del{background:none;border:1px solid #7f1d1d;color:var(--rd);width:28px;height:28px;border-radius:8px;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:.5;transition:.2s}
+.lib-del:active{opacity:1;background:#7f1d1d}
+.lib-restore{background:none;border:1px solid #14532d;color:var(--gn);width:28px;height:28px;border-radius:8px;font-size:14px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.2s}
+.lib-restore:active{background:#14532d}
+    `}</style>
+    <div className="A">
+      <div className="hd"><div className="logo">habla.</div><div className="sk">🔥 {streak}</div></div>
+
+      {tab==="study"&&<div className="ai">
+        <div className="sb">
+          <div className="sp"><div className="sn">{reviews.length}</div><div className="sl">Reviews</div></div>
+          <div className="sp"><div className="sn">{Math.min(totalNew, NEW_CARDS_PER_SESSION)}</div><div className="sl">New</div></div>
+          <div className="sp"><div className="sn">{mastered}</div><div className="sl">Mastered</div></div>
+        </div>
+        <div className="fl">
+          {FILTERS.map(f=><button key={f} className={"fb"+(filter===f?" on":"")} onClick={()=>{setFilter(f);setRevealed(false)}}>{f==="all"?"All":f==="word"?"Words":"Phrases"}</button>)}
+        </div>
+        <select className="ss" value={source} onChange={e=>{setSource(e.target.value);setRevealed(false)}}>
+          {SOURCES_LIST.map(s=><option key={s}>{s}</option>)}
+        </select>
+        {cur?<>
+          <div className="cc" onTouchStart={e=>{tr.current=e.touches[0].clientX}} onTouchMove={e=>{if(tr.current&&revealed)setSx(e.touches[0].clientX-tr.current)}} onTouchEnd={()=>{if(Math.abs(sx)>80&&revealed){sx>0?doGrade(2):doGrade(0)}setSx(0);tr.current=null}}>
+            <div className={"cd "+(revealed?"cb":"cf")} onClick={reveal} style={{transform:sx?"translateX("+sx+"px) rotate("+sx*.05+"deg)":undefined,opacity:Math.abs(sx)>60?.7:1}}>
+              <div className="ct">{cur.type}</div><div className="cs">{cur.source}</div>
+              {!revealed?<>
+                <div className="cp">{dir==="es-en"?"Spanish":"English"}</div>
+                <div className={"cx"+((qtext||"").length>30?" sm":"")}>{qtext}</div>
+                {dir==="es-en"&&<button className="spk" onClick={e=>{e.stopPropagation();speak(cur.spanish)}}>🔊</button>}
+                <span className="th">Tap to reveal</span>
+              </>:<>
+                <div className="cp">{dir==="es-en"?"Spanish":"English"}</div>
+                <div style={{fontSize:18,fontWeight:400,color:'var(--t2)',textAlign:'center',marginBottom:12}}>{qtext}</div>
+                <div className="al">{dir==="es-en"?"English":"Español"}</div>
+                <div className="av">{atext}</div>
+                <button className="spk" onClick={e=>{e.stopPropagation();speak(cur.spanish)}}>🔊</button>
+                {cur.ex && <div className="ex-wrap" onClick={e=>e.stopPropagation()}>
+                  <div className="ex-label">Example</div>
+                  <div className="ex-es">{cur.ex} <button className="ex-spk" onClick={()=>speak(cur.ex)}>🔊</button></div>
+                  <div className="ex-en">{cur.exEn}</div>
+                </div>}
+              </>}
+            </div>
+          </div>
+          {revealed&&<><div className="gr ai">
+            <button className="gb g0" onClick={()=>doGrade(0)}>Again<span className="gt">1m</span></button>
+            <button className="gb g1" onClick={()=>doGrade(1)}>Hard<span className="gt">{cur.s.rep===0?"10m":fmtIv(Math.round(cur.s.iv*1.2))}</span></button>
+            <button className="gb g2" onClick={()=>doGrade(2)}>Good<span className="gt">{cur.s.rep<1?"4h":cur.s.rep<2?"1d":fmtIv(Math.round(cur.s.iv*cur.s.ef))}</span></button>
+            <button className="gb g3" onClick={()=>doGrade(3)}>Easy<span className="gt">{cur.s.rep<1?"1d":cur.s.rep<2?"4d":fmtIv(Math.round(cur.s.iv*cur.s.ef*1.3))}</span></button>
+          </div><div style={{textAlign:'center',fontSize:12,color:'var(--t3)'}}>Swipe right = Good · Swipe left = Again</div></>}
+        </>:<div className="dn ai"><div className="de">🎉</div><div className="dt">All caught up!</div><div className="ds">Session: {count} cards reviewed.{totalNew > 0 && <><br/>{totalNew} new cards waiting — come back later!</>}<br/>Cards you marked Easy won't return for 1+ days.</div></div>}
+      </div>}
+
+      {tab==="projects"&&<div className="ai">
+        {projView==="list"&&<>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800}}>Projects</div>
+            <button className="ib" style={{width:'auto',marginTop:0,padding:'10px 20px',fontSize:13}} onClick={()=>{setNewProjName("");setProjView("new")}}>+ New</button>
+          </div>
+
+          {csrc.length===0 && <div className="sc" style={{textAlign:'center',padding:'40px 20px'}}>
+            <div style={{fontSize:36,marginBottom:12}}>📁</div>
+            <div style={{fontSize:16,fontWeight:700,marginBottom:8}}>No projects yet</div>
+            <div style={{fontSize:13,color:'var(--t3)',lineHeight:1.5}}>Create a project for a TV episode, podcast, YouTube video, or any Spanish content. Import the transcript and build a custom flashcard deck.</div>
+          </div>}
+
+          {csrc.map(s=>{
+            const cards = custom.filter(c=>c.source===s);
+            const m = cards.filter(c=>(srs[c.id]?.rep||0)>=3).length;
+            const pct = cards.length ? Math.round((m/cards.length)*100) : 0;
+            return (
+              <div key={s} className="proj-card" onClick={()=>{setActiveProj(s);setProjView("detail");setTxt("");setPreview(null);setErr("");setOk("")}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                  <div style={{fontFamily:"'Fraunces',serif",fontSize:16,fontWeight:800,flex:1}}>{s}</div>
+                  <span style={{fontSize:12,color:'var(--t3)',flexShrink:0}}>{cards.length} cards</span>
+                </div>
+                <div className="pb" style={{marginTop:0}}><div className="pf" style={{width:pct+"%"}}/></div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--t3)',marginTop:6}}>
+                  <span>{m} mastered</span>
+                  <span>{pct}% complete</span>
+                </div>
+              </div>
+            );
+          })}
+        </>}
+
+        {projView==="new"&&<>
+          <button className="proj-back" onClick={()=>setProjView("list")}>← Back</button>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800,marginBottom:8}}>New Project</div>
+          <p style={{fontSize:13,color:'var(--t2)',marginBottom:20,lineHeight:1.5}}>Name your project after the content — a TV episode, YouTube video, podcast, article, etc.</p>
+          <div className="sc">
+            <input className="ip" style={{marginTop:0}} placeholder="e.g. Breaking Bad S1E1, Pod 101 Ep 45..." value={newProjName} onChange={e=>setNewProjName(e.target.value)}/>
+            <button className="ib" disabled={!newProjName.trim() || csrc.includes(newProjName.trim())} onClick={()=>{
+              setActiveProj(newProjName.trim());
+              setProjView("detail");
+              setTxt(""); setPreview(null); setErr(""); setOk("");
+            }}>
+              {csrc.includes(newProjName.trim()) ? "Name already exists" : "Create Project"}
+            </button>
+          </div>
+        </>}
+
+        {projView==="detail"&&activeProj&&(()=>{
+          const projCards = custom.filter(c=>c.source===activeProj);
+          const projMastered = projCards.filter(c=>(srs[c.id]?.rep||0)>=3).length;
+          const projSeen = projCards.filter(c=>srs[c.id]?.last>0).length;
+          const projPct = projCards.length ? Math.round((projMastered/projCards.length)*100) : 0;
+          return <>
+            <button className="proj-back" onClick={()=>{setProjView("list");setPreview(null);setErr("");setOk("")}}>← All Projects</button>
+            <div style={{fontFamily:"'Fraunces',serif",fontSize:22,fontWeight:800,marginBottom:4}}>{activeProj}</div>
+
+            {projCards.length > 0 && <>
+              <div className="sb" style={{marginTop:12}}>
+                <div className="sp"><div className="sn" style={{fontSize:18}}>{projCards.length}</div><div className="sl">Cards</div></div>
+                <div className="sp"><div className="sn" style={{fontSize:18}}>{projSeen}</div><div className="sl">Seen</div></div>
+                <div className="sp"><div className="sn" style={{fontSize:18}}>{projMastered}</div><div className="sl">Mastered</div></div>
+              </div>
+              <div className="pb" style={{marginBottom:4}}><div className="pf" style={{width:projPct+"%"}}/></div>
+              <div style={{fontSize:11,color:'var(--t3)',textAlign:'right',marginBottom:16}}>{projPct}% complete</div>
+
+              <button className="ib" style={{marginTop:0,marginBottom:12}} onClick={()=>{setSource(activeProj);setTab("study");setRevealed(false)}}>
+                Study This Project
+              </button>
+            </>}
+
+            <div className="sc">
+              <div className="sh">Import Transcript</div>
+              <textarea className="ta" placeholder={"Paste Spanish transcript for this project...\n\ne.g. subtitles, dialogue, transcript..."} value={txt} onChange={e=>setTxt(e.target.value)}/>
+              <button className="ib" disabled={!txt.trim()||busy} onClick={()=>doExtract(null)}>
+                {busy?<span>Extracting vocabulary<span className="ld"></span></span>:"Extract Vocabulary"}
+              </button>
+              {err&&<div className="ie">{err}</div>}
+              {ok&&<div className="io">{ok}</div>}
+            </div>
+
+            {preview&&<div className="sc ai">
+              {(()=>{
+                const selectable = preview.map((c,i)=>({c,i})).filter(({c})=>!c.isDupe);
+                const selectedCount = selectable.filter(({i})=>!excluded[i]).length;
+                const dupeCount = preview.filter(c=>c.isDupe).length;
+                return <>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                    <div className="sh" style={{marginBottom:0}}>{selectedCount} selected{dupeCount>0?" · "+dupeCount+" in deck":""}</div>
+                    <div style={{display:'flex',gap:6}}>
+                      <button className="lf on" style={{fontSize:10,padding:'4px 10px'}} onClick={()=>setExcluded({})}>All</button>
+                      <button className="lf" style={{fontSize:10,padding:'4px 10px'}} onClick={()=>{const ex={};preview.forEach((c,i)=>{if(!c.isDupe)ex[i]=true});setExcluded(ex)}}>None</button>
+                    </div>
+                  </div>
+                  {preview.map((c,i)=>{
+                    const isOut = excluded[i];
+                    return <div key={i} className="pc" style={{opacity:c.isDupe?.35:isOut?.5:1,cursor:c.isDupe?'default':'pointer'}}
+                      onClick={()=>{if(!c.isDupe){const ne={...excluded};ne[i]?delete ne[i]:ne[i]=true;setExcluded(ne)}}}>
+                      {!c.isDupe && <span style={{fontSize:18,flexShrink:0,width:24,textAlign:'center'}}>{isOut?"☐":"☑"}</span>}
+                      <button className="ps" onClick={e=>{e.stopPropagation();speak(c.spanish)}}>🔊</button>
+                      <span className="pe" style={{textDecoration:isOut?'line-through':'none'}}>{c.spanish}</span>
+                      <span className="pn">{c.english}</span>
+                      {c.isDupe ? <span className="pt" style={{background:'#7f1d1d33',color:'var(--rd)',border:'1px solid #7f1d1d'}}>exists</span> : <span className="pt">{c.type}</span>}
+                    </div>
+                  })}
+                  <button className="ib" onClick={doImport} disabled={selectedCount===0}>Add {selectedCount} Cards to Project</button>
+                </>;
+              })()}
+              <button className="ib2" style={{background:'var(--amd)',borderColor:'var(--am)',color:'var(--am)'}} disabled={busy} onClick={()=>doExtract(preview)}>
+                {busy ? <span>Extracting more<span className="ld"></span></span> : "Extract More Vocabulary"}
+              </button>
+              <button className="ib2" onClick={()=>setPreview(null)}>Cancel</button>
+            </div>}
+
+            {projCards.length > 0 && <div className="sc">
+              <div className="sh">Cards in this project</div>
+              {projCards.map(c=>{
+                const st = getStatus(c.id);
+                return (
+                  <div key={c.id} className="pc" style={{flexWrap:'wrap'}}>
+                    <button className="ps" onClick={()=>speak(c.spanish)}>🔊</button>
+                    <span className="pe">{c.spanish}</span>
+                    <span className="pn">{c.english}</span>
+                    <span className={"lib-badge "+st} style={{flexShrink:0}}>{st}</span>
+                  </div>
+                );
+              })}
+            </div>}
+
+            <button className="rb" style={{marginTop:4}} onClick={()=>{delSrc(activeProj);setProjView("list")}}>Delete This Project</button>
+          </>;
+        })()}
+      </div>}
+
+      {tab==="library"&&<div className="ai">
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800,marginBottom:4}}>Library</div>
+        <p style={{fontSize:12,color:'var(--t3)',marginBottom:16}}>{ALL.length} active · {prioCount} prioritized · {hiddenCount} hidden · Tap ⭐ to learn first</p>
+
+        <div className="lib-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input className="lib-search" placeholder="Search Spanish or English..." value={libSearch} onChange={e=>setLibSearch(e.target.value)}/>
+        </div>
+
+        <div className="lib-filters">
+          {["all","priority","new","learning","mastered","hidden"].map(s=>(
+            <button key={s} className={"lf"+(libStatus===s?" on":"")} onClick={()=>setLibStatus(s)}>
+              {s==="all"?"All":s==="priority"?"⭐ Priority":s==="new"?"New":s==="learning"?"Learning":s==="mastered"?"Mastered":"🗑 Hidden"+(hiddenCount?" ("+hiddenCount+")":"")}
+            </button>
+          ))}
+        </div>
+        <div className="lib-filters">
+          {["all","word","phrase"].map(f=>(
+            <button key={f} className={"lf"+(libFilter===f?" on":"")} onClick={()=>setLibFilter(f)}>
+              {f==="all"?"All Types":f==="word"?"Words":"Phrases"}
+            </button>
+          ))}
+          <select style={{background:'var(--s1)',border:'1px solid var(--s2)',color:'var(--t2)',padding:'5px 10px',borderRadius:100,fontSize:12,fontFamily:'inherit',appearance:'none',cursor:'pointer'}} value={libSource} onChange={e=>setLibSource(e.target.value)}>
+            {SOURCES_LIST.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </div>
+
+        <div className="lib-count">{libCards.length} card{libCards.length!==1?"s":""}</div>
+
+        {libCards.map(c=>{
+          const st = getStatus(c.id);
+          const isHidden = !!hidden[c.id];
+          return (
+            <div key={c.id} className="lib-row">
+              {!isHidden && <button className="lib-star" onClick={()=>togglePrio(c.id)}>{prio[c.id]?"⭐":"☆"}</button>}
+              <button className="ps" onClick={()=>speak(c.spanish)}>🔊</button>
+              <div className="lib-info">
+                <div className="lib-es">{c.spanish}</div>
+                <div className="lib-en">{c.english}</div>
+              </div>
+              <div className="lib-meta">
+                {!isHidden && <span className={"lib-badge "+st}>{st}</span>}
+                <span style={{fontSize:9,color:'var(--t3)'}}>{c.type}</span>
+              </div>
+              {isHidden ? (
+                <button className="lib-restore" onClick={async()=>{const nh={...hidden};delete nh[c.id];setHidden(nh);await saveData(HIDDEN_KEY,nh)}}>↩</button>
+              ) : (
+                <button className="lib-del" onClick={()=>hideCard(c.id)}>✕</button>
+              )}
+            </div>
+          );
+        })}
+
+        {libCards.length===0&&<div style={{textAlign:'center',padding:'40px 20px',color:'var(--t3)',fontSize:14}}>No cards match your filters</div>}
+      </div>}
+
+      {tab==="stats"&&<div className="ai">
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800,marginBottom:20}}>Progress</div>
+        <div className="sg">
+          <div className="sk2"><div className="sn" style={{color:'var(--am)'}}>{ALL.length}</div><div className="sl">Total</div></div>
+          <div className="sk2"><div className="sn" style={{color:'var(--gn)'}}>{mastered}</div><div className="sl">Mastered</div></div>
+          <div className="sk2"><div className="sn" style={{color:'var(--bl)'}}>{seen}</div><div className="sl">Seen</div></div>
+          <div className="sk2"><div className="sn" style={{color:'var(--rd)'}}>{due.length}</div><div className="sl">Due</div></div>
+        </div>
+        <div className="sc"><div className="sh">Mastery</div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'var(--t2)',marginBottom:8}}><span>{mastered} mastered</span><span>{ALL.length} total</span></div>
+          <div className="pb"><div className="pf" style={{width:(ALL.length?(mastered/ALL.length)*100:0)+"%"}}/></div>
+        </div>
+        <div className="sc"><div className="sh">By Source</div>
+          {[...new Set(ALL.map(c=>c.source))].map(s=>{const sc=ALL.filter(c=>c.source===s);const sm=sc.filter(c=>(srs[c.id]?.rep||0)>=3).length;return(
+            <div key={s} style={{marginBottom:16}}><div style={{display:'flex',justifyContent:'space-between',fontSize:13,color:'var(--t2)',marginBottom:6}}><span>{s}</span><span>{sm}/{sc.length}</span></div>
+            <div className="pb"><div className="pf" style={{width:(sc.length?(sm/sc.length)*100:0)+"%"}}/></div></div>
+          )})}
+        </div>
+      </div>}
+
+      {tab==="settings"&&<div className="ai">
+        <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800,marginBottom:20}}>Settings</div>
+        <div className="sc"><div className="sh">Study Direction</div>
+          <div className="sr"><span style={{fontSize:14,color:'var(--t2)'}}>Spanish → English</span><button className={"tg"+(dir==="es-en"?" on":"")} onClick={()=>{setDir("es-en");setRevealed(false)}}/></div>
+          <div className="sr"><span style={{fontSize:14,color:'var(--t2)'}}>English → Spanish</span><button className={"tg"+(dir==="en-es"?" on":"")} onClick={()=>{setDir("en-es");setRevealed(false)}}/></div>
+        </div>
+        <div className="sc"><div className="sh">Voice</div>
+          <div className="sr"><span style={{fontSize:14,color:'var(--t2)'}}>Test pronunciation</span><button className="spk" style={{marginTop:0}} onClick={()=>speak("¡Hola! Estoy aprendiendo español")}>🔊</button></div>
+          <div style={{fontSize:12,color:'var(--t3)',padding:'8px 0 4px',lineHeight:1.5}}>
+            Using: <span style={{color:'var(--am)'}}>{getBestSpanishVoice()?.name || "Default"}</span>
+            <br/>({getBestSpanishVoice()?.lang || "es"})
+          </div>
+          <div style={{fontSize:11,color:'var(--t3)',padding:'8px 0',lineHeight:1.6,borderTop:'1px solid var(--s2)',marginTop:8}}>
+            For better voices on <b>iPhone</b>: Settings → Accessibility → Spoken Content (or Read & Speak) → Voices → Spanish (Mexico) → download an Enhanced voice
+            <br/><br/>
+            On <b>Android</b>: Settings → System → Language → Text-to-Speech → install Google high-quality voices
+          </div>
+        </div>
+        <div className="sc"><div className="sh">Data</div>
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12}}>{BASE_CARDS.length} built-in + {custom.length} imported = {ALL_RAW.length} total · {hiddenCount} hidden · {ALL.length} active.</div>
+          {hiddenCount > 0 && <button style={{width:'100%',padding:14,borderRadius:12,background:'#14532d',border:'1px solid #166534',color:'var(--gn)',fontFamily:'inherit',fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}} onClick={()=>{if(confirm("Restore all "+hiddenCount+" hidden cards?"))unhideAll()}}>Restore {hiddenCount} Hidden Cards</button>}
+          <button className="rb" onClick={()=>{if(confirm("Reset all progress?"))resetAll()}}>Reset All Progress</button>
+        </div>
+
+        <div className="sc"><div className="sh">Transfer to Another Device</div>
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:14,lineHeight:1.5}}>Move your projects, progress, and settings between devices.</div>
+
+          {!syncMode && <div style={{display:'flex',gap:8}}>
+            <button className="ib" style={{flex:1,marginTop:0}} onClick={doExport}>Export Data</button>
+            <button className="ib2" style={{flex:1,marginTop:0}} onClick={()=>{setSyncMode("import");setSyncCode("");setSyncMsg("")}}>Import Data</button>
+          </div>}
+
+          {syncMode==="export" && <>
+            <div style={{fontSize:12,color:'var(--t2)',marginBottom:8}}>Copy this code, then paste it on your other device using Import:</div>
+            <textarea className="ta" style={{minHeight:100,fontSize:11,wordBreak:'break-all'}} readOnly value={syncCode} onClick={e=>{e.target.select();navigator.clipboard?.writeText(syncCode).then(()=>setSyncMsg("Copied!"))}}/>
+            {syncMsg && <div className="io">{syncMsg}</div>}
+            <button className="ib2" style={{marginTop:8}} onClick={()=>{setSyncMode(null);setSyncCode("");setSyncMsg("")}}>Done</button>
+          </>}
+
+          {syncMode==="import" && <>
+            <div style={{fontSize:12,color:'var(--t2)',marginBottom:8}}>Paste the export code from your other device:</div>
+            <textarea className="ta" style={{minHeight:100,fontSize:11}} placeholder="Paste export code here..." value={syncCode} onChange={e=>setSyncCode(e.target.value)}/>
+            <button className="ib" disabled={!syncCode.trim()} onClick={doImportSync}>Load Data</button>
+            {syncMsg && <div className={syncMsg.startsWith("Invalid")?"ie":"io"}>{syncMsg}</div>}
+            <button className="ib2" style={{marginTop:4}} onClick={()=>{setSyncMode(null);setSyncCode("");setSyncMsg("")}}>Cancel</button>
+          </>}
+        </div>
+      </div>}
+
+      <div className="bn">
+        <button className={"nb"+(tab==="study"?" on":"")} onClick={()=>setTab("study")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>Study</button>
+        <button className={"nb"+(tab==="library"?" on":"")} onClick={()=>setTab("library")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>Library</button>
+        <button className={"nb"+(tab==="projects"?" on":"")} onClick={()=>{setTab("projects");setProjView("list")}}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Projects</button>
+        <button className={"nb"+(tab==="stats"?" on":"")} onClick={()=>setTab("stats")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>Stats</button>
+        <button className={"nb"+(tab==="settings"?" on":"")} onClick={()=>setTab("settings")}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>Settings</button>
+      </div>
+    </div>
+  </>);
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
+</script>
+</body>
+</html>
