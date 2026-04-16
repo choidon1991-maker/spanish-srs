@@ -388,12 +388,12 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// ─── AI EXTRACTION ──────────────────────────────────────────────────
+// ─── AI EXTRACTION (Google Gemini — free tier) ─────────────────────
 const API_KEY_KEY = "habla-api-key";
 
 async function extractCards(text, alreadyFound) {
   const apiKey = localStorage.getItem(API_KEY_KEY);
-  if (!apiKey) throw new Error("No API key set. Go to Settings → API Key and enter your Anthropic API key.");
+  if (!apiKey) throw new Error("No API key set. Go to Settings → API Key and enter your Google Gemini API key.");
 
   const words = text.split(/\s+/);
   const trimmed = words.length > 3000 ? words.slice(0, 3000).join(" ") + "\n\n[transcript truncated]" : text;
@@ -402,18 +402,7 @@ async function extractCards(text, alreadyFound) {
     ? "\n\nIMPORTANT: You have ALREADY extracted these words. Do NOT include any of them again:\n" + alreadyFound.join(", ")
     : "";
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      system: `You extract Spanish vocabulary from text for a flashcard app. Return ONLY a valid JSON array. No markdown fences, no backticks, no explanation text before or after. Just the raw JSON array.
+  const prompt = `You extract Spanish vocabulary from text for a flashcard app. Return ONLY a valid JSON array. No markdown fences, no backticks, no explanation text before or after. Just the raw JSON array.
 
 Each object: {"spanish":"...","english":"...","type":"word"|"phrase"}
 
@@ -426,21 +415,31 @@ Rules:
 - Skip only the most basic filler words (y, el, la, de, en, a, que, un, una, los, las) unless part of a useful phrase
 - type="word" for 1 word, type="phrase" for 2+ words
 
-CRITICAL: Your entire response must be valid JSON. Start with [ and end with ]. Nothing else.`,
-      messages: [{ role: "user", content: "Extract ALL vocabulary from this Spanish text:" + skipList + "\n\n" + trimmed }],
+CRITICAL: Your entire response must be valid JSON. Start with [ and end with ]. Nothing else.
+
+Extract ALL vocabulary from this Spanish text:${skipList}
+
+${trimmed}`;
+
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(apiKey), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 4096, temperature: 0.2 },
     }),
   });
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "");
-    if (res.status === 401) throw new Error("Invalid API key. Check your key in Settings → API Key.");
+    if (res.status === 400 || res.status === 403) throw new Error("Invalid API key. Check your key in Settings → API Key.");
     throw new Error("API error " + res.status + ": " + errText.slice(0, 200));
   }
 
   const data = await res.json();
   if (data.error) throw new Error("API: " + (data.error.message || JSON.stringify(data.error)));
 
-  const raw = (data.content || []).map(b => b.text || "").join("");
+  const raw = (data.candidates || []).map(c => (c.content?.parts || []).map(p => p.text || "").join("")).join("");
   if (!raw.trim()) throw new Error("Empty response from API");
 
   const clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -1073,9 +1072,9 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
           </div>
         </div>
         <div className="sc"><div className="sh">API Key</div>
-          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>Enter your Anthropic API key to enable AI vocabulary extraction in Projects. Your key is stored locally on this device only.</div>
-          <input className="ip" style={{marginTop:0}} type="password" placeholder="sk-ant-..." value={apiKey} onChange={e=>{setApiKey(e.target.value);localStorage.setItem(API_KEY_KEY,e.target.value)}}/>
-          {apiKey && <div style={{fontSize:12,color:'var(--gn)',marginTop:8}}>Key saved ({apiKey.slice(0,10)}...)</div>}
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>Enter your Google Gemini API key to enable free AI vocabulary extraction in Projects. Get one free at aistudio.google.com/apikey. Your key is stored locally on this device only.</div>
+          <input className="ip" style={{marginTop:0}} type="password" placeholder="AIza..." value={apiKey} onChange={e=>{setApiKey(e.target.value);localStorage.setItem(API_KEY_KEY,e.target.value)}}/>
+          {apiKey && <div style={{fontSize:12,color:'var(--gn)',marginTop:8}}>Key saved ({apiKey.slice(0,4)}...)</div>}
         </div>
 
         <div className="sc"><div className="sh">Data</div>
