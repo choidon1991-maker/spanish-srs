@@ -313,6 +313,8 @@ const SRS_KEY = "habla-srs-data";
 const CUSTOM_KEY = "habla-custom-cards";
 const PRIO_KEY = "habla-priority-cards";
 const HIDDEN_KEY = "habla-hidden-cards";
+const SYNC_ID_KEY = "habla-sync-id";
+const FIREBASE_URL = "https://spanish-flashcard-aec32-default-rtdb.firebaseio.com";
 
 async function loadData(key) {
   try {
@@ -322,6 +324,28 @@ async function loadData(key) {
 }
 async function saveData(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  cloudSave(key, val);
+}
+
+async function cloudSave(key, val) {
+  const syncId = localStorage.getItem(SYNC_ID_KEY);
+  if (!syncId) return;
+  try {
+    await fetch(FIREBASE_URL + "/users/" + encodeURIComponent(syncId) + "/" + encodeURIComponent(key) + ".json", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(val),
+    });
+  } catch {}
+}
+
+async function cloudLoad(syncId) {
+  try {
+    const res = await fetch(FIREBASE_URL + "/users/" + encodeURIComponent(syncId) + ".json");
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data;
+  } catch { return null; }
 }
 
 // ─── SRS ENGINE ─────────────────────────────────────────────────────
@@ -497,6 +521,8 @@ function App() {
   const [syncMsg, setSyncMsg] = useState("");
   const [excluded, setExcluded] = useState({});
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_KEY) || "");
+  const [syncId, setSyncId] = useState(() => localStorage.getItem(SYNC_ID_KEY) || "");
+  const [syncStatus, setSyncStatus] = useState("");
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -505,6 +531,19 @@ function App() {
 
   useEffect(() => {
     (async () => {
+      const sid = localStorage.getItem(SYNC_ID_KEY);
+      if (sid) {
+        const cloud = await cloudLoad(sid);
+        if (cloud) {
+          const cs = cloud[SRS_KEY]; const cc = cloud[CUSTOM_KEY]; const cp = cloud[PRIO_KEY]; const ch = cloud[HIDDEN_KEY];
+          if (cs) { setSrs(cs); await saveData(SRS_KEY, cs); }
+          if (cc) { setCustom(cc); await saveData(CUSTOM_KEY, cc); }
+          if (cp) { setPrio(cp); await saveData(PRIO_KEY, cp); }
+          if (ch) { setHidden(ch); await saveData(HIDDEN_KEY, ch); }
+          setLoading(false);
+          return;
+        }
+      }
       const [s, c, p, h] = await Promise.all([loadData(SRS_KEY), loadData(CUSTOM_KEY), loadData(PRIO_KEY), loadData(HIDDEN_KEY)]);
       if (s) setSrs(s);
       if (c) setCustom(c);
@@ -1075,6 +1114,42 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
             On <b>Android</b>: Settings → System → Language → Text-to-Speech → install Google high-quality voices
           </div>
         </div>
+        <div className="sc"><div className="sh">Cloud Sync</div>
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>Sync your data across all devices automatically. Enter the same sync ID on every device you want to keep in sync.</div>
+          <input className="ip" style={{marginTop:0}} placeholder="Enter a sync ID (e.g. your name)" value={syncId} onChange={e=>{
+            const val = e.target.value;
+            setSyncId(val);
+            if (val.trim()) {
+              localStorage.setItem(SYNC_ID_KEY, val.trim());
+            } else {
+              localStorage.removeItem(SYNC_ID_KEY);
+            }
+          }}/>
+          {syncId && <div style={{display:'flex',gap:8,marginTop:12}}>
+            <button className="ib" style={{flex:1,marginTop:0}} onClick={async()=>{
+              setSyncStatus("Uploading...");
+              const s = await loadData(SRS_KEY); const c = await loadData(CUSTOM_KEY); const p = await loadData(PRIO_KEY); const h = await loadData(HIDDEN_KEY);
+              await cloudSave(SRS_KEY, s || {}); await cloudSave(CUSTOM_KEY, c || []); await cloudSave(PRIO_KEY, p || {}); await cloudSave(HIDDEN_KEY, h || {});
+              setSyncStatus("Uploaded! Open this app on your other device with the same sync ID.");
+            }}>Push to Cloud</button>
+            <button className="ib2" style={{flex:1,marginTop:0}} onClick={async()=>{
+              setSyncStatus("Downloading...");
+              const cloud = await cloudLoad(syncId.trim());
+              if (cloud) {
+                if (cloud[SRS_KEY]) { setSrs(cloud[SRS_KEY]); localStorage.setItem(SRS_KEY, JSON.stringify(cloud[SRS_KEY])); }
+                if (cloud[CUSTOM_KEY]) { setCustom(cloud[CUSTOM_KEY]); localStorage.setItem(CUSTOM_KEY, JSON.stringify(cloud[CUSTOM_KEY])); }
+                if (cloud[PRIO_KEY]) { setPrio(cloud[PRIO_KEY]); localStorage.setItem(PRIO_KEY, JSON.stringify(cloud[PRIO_KEY])); }
+                if (cloud[HIDDEN_KEY]) { setHidden(cloud[HIDDEN_KEY]); localStorage.setItem(HIDDEN_KEY, JSON.stringify(cloud[HIDDEN_KEY])); }
+                setSyncStatus("Downloaded! Your data is now synced.");
+              } else {
+                setSyncStatus("No cloud data found for this sync ID. Push first from another device.");
+              }
+            }}>Pull from Cloud</button>
+          </div>}
+          {syncStatus && <div className="io" style={{marginTop:8}}>{syncStatus}</div>}
+          {syncId && <div style={{fontSize:11,color:'var(--t3)',marginTop:8}}>Auto-sync: every change you make will automatically save to the cloud. Pull from cloud when you open the app on a new device.</div>}
+        </div>
+
         <div className="sc"><div className="sh">API Key</div>
           <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>Enter your Groq API key to enable free AI vocabulary extraction in Projects. Get one free at console.groq.com/keys. Your key is stored locally on this device only.</div>
           <input className="ip" style={{marginTop:0}} type="password" placeholder="gsk_..." value={apiKey} onChange={e=>{setApiKey(e.target.value);localStorage.setItem(API_KEY_KEY,e.target.value)}}/>
