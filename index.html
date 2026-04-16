@@ -1171,7 +1171,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
                 <div className="sh" style={{marginBottom:0}}>Cards in this project</div>
                 <span style={{fontSize:11,color:'var(--t3)'}}>Tap ⭐ to study first</span>
               </div>
-              {[...projCards].sort((a,b)=>(prio[b.id]?1:0)-(prio[a.id]?1:0)).map(c=>{
+              {projCards.map(c=>{
                 const st = getStatus(c.id);
                 return (
                   <div key={c.id} className="pc" style={{flexWrap:'wrap'}}>
