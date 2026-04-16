@@ -532,6 +532,9 @@ function App() {
   const [genEx, setGenEx] = useState(null);
   const [genBusy, setGenBusy] = useState(false);
   const [genErr, setGenErr] = useState("");
+  const [pasteList, setPasteList] = useState("");
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const [pasteErr, setPasteErr] = useState("");
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -718,6 +721,73 @@ function App() {
     await saveData(CUSTOM_KEY, uc);
     setQcOk("Card added: " + qcResult.spanish);
     setQcResult(null); setQcInput("");
+  };
+
+  const doPasteList = async () => {
+    if (!pasteList.trim() || !activeProj) return;
+    setPasteBusy(true); setPasteErr(""); setPreview(null); setExcluded({});
+    const lines = pasteList.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) { setPasteBusy(false); return; }
+
+    const cards = [];
+    const needsTranslation = [];
+
+    for (const line of lines) {
+      const sep = line.includes("|") ? "|" : (line.includes(" - ") ? " - " : (line.includes("\t") ? "\t" : null));
+      if (sep) {
+        const parts = line.split(sep).map(p => p.trim()).filter(Boolean);
+        if (parts.length >= 2) {
+          const sp = parts[0], en = parts[1];
+          cards.push({ spanish: sp, english: en, type: sp.split(/\s+/).length === 1 ? "word" : "phrase" });
+          continue;
+        }
+      }
+      needsTranslation.push({ line, idx: cards.length });
+      cards.push(null);
+    }
+
+    if (needsTranslation.length > 0) {
+      const apiKey = localStorage.getItem(API_KEY_KEY);
+      if (!apiKey) {
+        setPasteErr("Some lines need translation but no API key is set. Add a Groq key in Settings, or include English using format: Spanish | English");
+        setPasteBusy(false);
+        return;
+      }
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              { role: "system", content: 'You translate Spanish phrases to English for a flashcard app. Return ONLY a valid JSON array. Each object: {"spanish":"<original>","english":"<translation>","type":"word"|"phrase"}. type="word" if 1 word, "phrase" if 2+ words. No markdown. Just the JSON array.' },
+              { role: "user", content: "Translate each of these Spanish phrases:\n\n" + needsTranslation.map(n => n.line).join("\n") },
+            ],
+            max_tokens: 4096, temperature: 0.2,
+          }),
+        });
+        if (!res.ok) throw new Error("API error " + res.status);
+        const data = await res.json();
+        const raw = (data.choices || []).map(c => c.message?.content || "").join("");
+        const clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        const match = clean.match(/\[[\s\S]*\]/);
+        const translated = JSON.parse(match ? match[0] : clean);
+        needsTranslation.forEach((n, i) => {
+          if (translated[i]) cards[n.idx] = translated[i];
+        });
+      } catch (e) {
+        setPasteErr("Translation failed: " + (e.message || "unknown error"));
+        setPasteBusy(false);
+        return;
+      }
+    }
+
+    const valid = cards.filter(Boolean);
+    const existing = new Set(ALL_RAW.map(c => c.spanish.toLowerCase().trim()));
+    const tagged = valid.map(c => ({ ...c, isDupe: existing.has(c.spanish.toLowerCase().trim()) }));
+    setPreview(tagged);
+    setPasteBusy(false);
+    setPasteList("");
   };
 
   const doGenerateExample = async () => {
@@ -1050,6 +1120,16 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
               </button>
               {err&&<div className="ie">{err}</div>}
               {ok&&<div className="io">{ok}</div>}
+            </div>
+
+            <div className="sc">
+              <div className="sh">Paste Phrases List</div>
+              <div style={{fontSize:13,color:'var(--t3)',marginBottom:12,lineHeight:1.5}}>One phrase per line. Format: <b>Spanish | English</b> for manual translations, or just <b>Spanish</b> to auto-translate via AI.</div>
+              <textarea className="ta" placeholder={"Hola | Hello\n¿Cómo estás?\nMe llamo Juan | My name is Juan"} value={pasteList} onChange={e=>setPasteList(e.target.value)}/>
+              <button className="ib" disabled={!pasteList.trim()||pasteBusy} onClick={doPasteList}>
+                {pasteBusy?<span>Processing<span className="ld"></span></span>:"Create Cards from List"}
+              </button>
+              {pasteErr&&<div className="ie">{pasteErr}</div>}
             </div>
 
             {preview&&<div className="sc ai">
