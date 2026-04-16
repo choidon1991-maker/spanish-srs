@@ -709,7 +709,7 @@ function App() {
   const doSaveCard = async () => {
     if (!qcResult) return;
     const ts = Date.now();
-    const nc = { id: "qc" + ts, spanish: qcResult.spanish, english: qcResult.english, type: qcResult.type || "phrase", source: "Quick Create" };
+    const nc = { id: "qc" + ts, spanish: qcResult.spanish, english: qcResult.english, type: qcResult.type || "phrase", source: "Created by DJ" };
     const uc = [...custom, nc];
     setCustom(uc);
     await saveData(CUSTOM_KEY, uc);
