@@ -670,6 +670,21 @@ function App() {
     await saveData(PRIO_KEY, np);
   };
 
+  const deleteCard = async (id) => {
+    if (!confirm("Delete this card permanently?")) return;
+    const uc = custom.filter(c => c.id !== id);
+    setCustom(uc);
+    await saveData(CUSTOM_KEY, uc);
+    if (srs[id]) {
+      const ns = { ...srs }; delete ns[id];
+      setSrs(ns); await saveData(SRS_KEY, ns);
+    }
+    if (prio[id]) {
+      const np = { ...prio }; delete np[id];
+      setPrio(np); await saveData(PRIO_KEY, np);
+    }
+  };
+
   const hideCard = async (id) => {
     const nh = { ...hidden, [id]: true };
     setHidden(nh);
@@ -1180,6 +1195,7 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
                     <span className="pe">{c.spanish}</span>
                     <span className="pn">{c.english}</span>
                     <span className={"lib-badge "+st} style={{flexShrink:0}}>{st}</span>
+                    <button className="lib-del" onClick={()=>deleteCard(c.id)}>✕</button>
                   </div>
                 );
               })}
