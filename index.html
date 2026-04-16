@@ -1167,11 +1167,15 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
             </div>}
 
             {projCards.length > 0 && <div className="sc">
-              <div className="sh">Cards in this project</div>
-              {projCards.map(c=>{
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                <div className="sh" style={{marginBottom:0}}>Cards in this project</div>
+                <span style={{fontSize:11,color:'var(--t3)'}}>Tap ⭐ to study first</span>
+              </div>
+              {[...projCards].sort((a,b)=>(prio[b.id]?1:0)-(prio[a.id]?1:0)).map(c=>{
                 const st = getStatus(c.id);
                 return (
                   <div key={c.id} className="pc" style={{flexWrap:'wrap'}}>
+                    <button className="lib-star" onClick={()=>togglePrio(c.id)}>{prio[c.id]?"⭐":"☆"}</button>
                     <button className="ps" onClick={()=>speak(c.spanish)}>🔊</button>
                     <span className="pe">{c.spanish}</span>
                     <span className="pn">{c.english}</span>
