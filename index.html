@@ -523,6 +523,12 @@ function App() {
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(API_KEY_KEY) || "");
   const [syncId, setSyncId] = useState(() => localStorage.getItem(SYNC_ID_KEY) || "");
   const [syncStatus, setSyncStatus] = useState("");
+  const [qcInput, setQcInput] = useState("");
+  const [qcResult, setQcResult] = useState(null);
+  const [qcBusy, setQcBusy] = useState(false);
+  const [qcErr, setQcErr] = useState("");
+  const [qcOk, setQcOk] = useState("");
+  const [qcOpen, setQcOpen] = useState(false);
 
   const ALL_RAW = [...BASE_WITH_EX, ...custom];
   const ALL = ALL_RAW.filter(c => !hidden[c.id]);
@@ -670,6 +676,45 @@ function App() {
   const unhideAll = async () => {
     setHidden({});
     await saveData(HIDDEN_KEY, {});
+  };
+
+  const doTranslate = async () => {
+    if (!qcInput.trim()) return;
+    const apiKey = localStorage.getItem(API_KEY_KEY);
+    if (!apiKey) { setQcErr("No API key set. Go to Settings → API Key and enter your Groq API key."); return; }
+    setQcBusy(true); setQcErr(""); setQcOk(""); setQcResult(null);
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: 'You translate English to Spanish for a flashcard app. Return ONLY a JSON object with: {"spanish":"...","english":"...","type":"word"|"phrase"}. type="word" if 1 word, "phrase" if 2+ words. No markdown, no explanation. Just the JSON object.' },
+            { role: "user", content: qcInput.trim() },
+          ],
+          max_tokens: 256, temperature: 0.2,
+        }),
+      });
+      if (!res.ok) throw new Error("API error " + res.status);
+      const data = await res.json();
+      const raw = (data.choices || []).map(c => c.message?.content || "").join("");
+      const clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(clean);
+      setQcResult(parsed);
+    } catch (e) { setQcErr(e.message || "Translation failed"); }
+    setQcBusy(false);
+  };
+
+  const doSaveCard = async () => {
+    if (!qcResult) return;
+    const ts = Date.now();
+    const nc = { id: "qc" + ts, spanish: qcResult.spanish, english: qcResult.english, type: qcResult.type || "phrase", source: "Quick Create" };
+    const uc = [...custom, nc];
+    setCustom(uc);
+    await saveData(CUSTOM_KEY, uc);
+    setQcOk("Card added: " + qcResult.spanish);
+    setQcResult(null); setQcInput("");
   };
 
   const doExport = () => {
@@ -1021,8 +1066,31 @@ body{background:var(--bg);font-family:'DM Sans',sans-serif;color:var(--t)}
       </div>}
 
       {tab==="library"&&<div className="ai">
-        <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800,marginBottom:4}}>Library</div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:24,fontWeight:800}}>Library</div>
+          <button className="ib" style={{width:'auto',marginTop:0,padding:'8px 16px',fontSize:13}} onClick={()=>{setQcOpen(!qcOpen);setQcResult(null);setQcErr("");setQcOk("")}}>{qcOpen?"Close":"+ Create Card"}</button>
+        </div>
         <p style={{fontSize:12,color:'var(--t3)',marginBottom:16}}>{ALL.length} active · {prioCount} prioritized · {hiddenCount} hidden · Tap ⭐ to learn first</p>
+
+        {qcOpen&&<div className="sc" style={{marginBottom:16}}>
+          <div className="sh">Quick Create</div>
+          <div style={{fontSize:13,color:'var(--t3)',marginBottom:12}}>Type in English — it'll translate to Spanish and create a flashcard.</div>
+          <input className="ip" style={{marginTop:0}} placeholder="Type English word or sentence..." value={qcInput} onChange={e=>setQcInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")doTranslate()}}/>
+          <button className="ib" disabled={!qcInput.trim()||qcBusy} onClick={doTranslate}>
+            {qcBusy?<span>Translating<span className="ld"></span></span>:"Translate to Spanish"}
+          </button>
+          {qcErr&&<div className="ie">{qcErr}</div>}
+          {qcResult&&<div style={{marginTop:12,padding:16,background:'var(--bg)',border:'1px solid var(--s3)',borderRadius:12}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+              <span style={{fontSize:20,fontWeight:700,color:'var(--am)'}}>{qcResult.spanish}</span>
+              <button className="ps" onClick={()=>speak(qcResult.spanish)}>🔊</button>
+            </div>
+            <div style={{fontSize:14,color:'var(--t2)',marginBottom:12}}>{qcResult.english}</div>
+            <span className="pt" style={{marginBottom:12,display:'inline-block'}}>{qcResult.type}</span>
+            <button className="ib" style={{marginTop:8}} onClick={doSaveCard}>Add to Flashcards</button>
+          </div>}
+          {qcOk&&<div className="io">{qcOk}</div>}
+        </div>}
 
         <div className="lib-search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
